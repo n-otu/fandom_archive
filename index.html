@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>The Fandom Archive</title>
+        <script type="importmap">
+            {
+                "imports": {
+                    "vue": "https://cdn.jsdelivr.net/npm/vue@3.5.13/dist/vue.esm-browser.js",
+                    "@graffiti-garden/implementation-local": "https://cdn.jsdelivr.net/npm/@graffiti-garden/implementation-local@0.6.4/dist/browser/index.js",
+                    "@graffiti-garden/implementation-remote": "https://cdn.jsdelivr.net/npm/@graffiti-garden/implementation-remote@0.6.2/dist/browser/index.js",
+                    "@graffiti-garden/wrapper-vue": "https://cdn.jsdelivr.net/npm/@graffiti-garden/wrapper-vue@0.7.2/dist/browser/plugin.mjs"
+                }
+            }
+        </script>
+        <link rel="stylesheet" href="style.css" />
+    </head>
+    <body>
+        <div id="app">
+
+            <!-- navigation -->
+            <nav>
+                <button :class="{ active: currentTab === 'forums' }" @click="currentTab = 'forums'">Forums</button>
+                <button :class="{ active: currentTab === 'home' }" @click="currentTab = 'home'">Home</button>
+                <button :class="{ active: currentTab === 'channels' }" @click="currentTab = 'channels'">Channels</button>
+            </nav>
+
+            <!-- logging in and out -->
+            <button v-if="!$graffitiSession.value" @click="$graffiti.login()" id="login">Log In</button>
+            <button @click="$graffiti.logout($graffitiSession.value)" id="logout">Log Out</button>
+
+            <!-- each tab of chat app, code and functionality separated -->
+            <section v-if="currentTab === 'home'" id="home">
+                <h1>The Fandom Archive</h1>
+
+
+                <div class="post">
+                    <div class="post-header">
+                    <img src="./media/images.jpeg" alt="User avatar" class="avatar" />
+                    <strong>user123</strong>
+                    </div>
+                    <p> dummy content dummy content dummy content dummy content dummy content dummy content dummy content </p>
+                    <div class="post-actions">
+                        <button class="like-btn">❤️ 12</button>
+                        <button class="reply-btn">💬 Reply</button>
+                      </div>
+                </div>
+
+                <div class="post">
+                    <div class="post-header">
+                    <img src="./media/images.jpeg" alt="User avatar" class="avatar" />
+                    <strong>randomFan42</strong>
+                    </div>
+                    <video controls width="100%">
+                        <source src="./media/7c24a9500653b78394f629b50b5c969c.mp4" type="video/mp4" />
+                        Your browser does not support the video tag.
+                      </video>
+
+                      <p>Just reread the final chapter—still not over it 😭</p>
+
+                      <div class="post-actions">
+                        <button class="like-btn">❤️ 12</button>
+                        <button class="reply-btn">💬 Reply</button>
+                      </div>
+                </div>
+
+                <div class="post">
+                    <div class="post-header">
+                    <img src="./media/images.jpeg" alt="User avatar" class="avatar" />
+                    <strong>cool_username</strong>
+                    </div>
+                    <p><em> dummy content dummy content dummy content dummy content dummy content dummy content</em></p>
+                    <div class="post-actions">
+                        <button class="like-btn">❤️ 12</button>
+                        <button class="reply-btn">💬 Reply</button>
+                      </div>
+                </div>
+            </section>
+
+            <section v-if="currentTab === 'forums'" id="forums">
+
+                <h1>Forums Page!</h1>
+
+
+                <!-- create forums -->
+                <form @submit.prevent="create_forum($graffitiSession.value)">
+                    <input v-model="newForumName" placeholder="Forum Name" />
+                    <input v-model="newForumTopic" placeholder="Topic (e.g. books, shows)" />
+                    <button type="submit">Create Forum</button>
+                  </form>
+
+                  <h2>Your Active Forums</h2>
+
+                  <!-- your fav forums -->
+                  <graffiti-discover
+                  v-slot="{ objects: starredObjects }"
+                  :channels="[ `starred-forums:${$graffitiSession.value.actor}` ]"
+                  :schema="{
+                    properties: {
+                      value: {
+                        required: ['activity', 'object'],
+                        properties: {
+                          activity: { const: 'Star' },
+                          object: { type: 'string' }
+                        }
+                      }
+                    }
+                  }"
+                  @update="starredChannels = $event"
+                >
+
+                  <ul>
+                    <li v-for="star in starredObjects" :key="star.url">
+                      <button @click="join_forum(star.value.object)">
+                        {{ star.value.object.name }}
+                      </button>
+                    </li>
+                  </ul>
+                  <hr />
+
+                </graffiti-discover>
+
+
+                <graffiti-discover
+                v-slot="{ objects: forumObjects }"
+                :channels="['global-forums']"
+                :schema="{
+                  properties: {
+                    value: {
+                      required: ['activity', 'object'],
+                      properties: {
+                        activity: { const: 'Create' },
+                        object: {
+                          required: ['type', 'name', 'topic', 'channel'],
+                          properties: {
+                            type: { const: 'Forum' },
+                            name: { type: 'string' },
+                            topic: { type: 'string' },
+                            channel: { type: 'string' }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }"
+              >
+
+
+                <h2>Explore</h2>
+
+                <!-- filtering -->
+                <label>
+                    Filter by topic:
+                    <select v-model="selectedForumTopic">
+                      <option value="All">All</option>
+                      <option
+                        v-for="topic in [...new Set(forumObjects.map(f => f.value.object.topic))]"
+                        :key="topic"
+                        :value="topic"
+                      >
+                        {{ topic }}
+                      </option>
+                    </select>
+                  </label>
+
+                  <ul>
+                    <li
+                      v-for="forum in forumObjects.filter(f =>
+                        selectedForumTopic === 'All' || f.value.object.topic === selectedForumTopic
+                      )"
+                      :key="forum.url"
+                    >
+                      <button @click="join_forum(forum.value.object.channel)">
+                        <strong>{{ forum.value.object.name }}</strong><br />
+                        <small>Topic: {{ forum.value.object.topic }}</small><br />
+                      </button>
+
+                      <!-- Star toggle -->
+                      <button @click="toggleStarForum(forum.value.object.channel)">
+                        {{ starredChannelIds.includes(forum.value.object.channel) ? '★' : '☆' }}
+                      </button>
+                    </li>
+                  </ul>
+
+
+
+                </graffiti-discover>
+
+                <template v-if="selectedChannel && currentTab === 'forums'">
+
+                <!-- show forum name and topic -->
+                <graffiti-discover
+                    v-slot="{ objects: forumMeta }"
+                    :channels="['global-forums']"
+                    :schema="{
+                        properties: {
+                        value: {
+                            required: ['activity', 'object'],
+                            properties: {
+                            activity: { const: 'Create' },
+                            object: {
+                                required: ['type', 'name', 'channel'],
+                                properties: {
+                                type: { const: 'Forum' },
+                                name: { type: 'string' },
+                                topic: { type: 'string' },
+                                channel: { type: 'string' }
+                                }
+                            }
+                            }
+                        }
+                        }
+                    }"
+                    >
+
+                    <h2>
+                        {{
+                        forumMeta.find(f => f.value.object.channel === selectedChannel)?.value.object.name ||
+                        'Forum Chat'
+                        }}
+                    </h2>
+                    <p>
+                        Topic:
+                        {{
+                          forumMeta.find(f => f.value.object.channel === selectedChannel)?.value.object.topic || 'unknown'
+                        }}
+                      </p>
+                    </graffiti-discover>
+
+                <!-- show list of sent messages in forum -->
+                <graffiti-discover
+                    v-slot="{ objects: messages }"
+                    :channels="[selectedChannel]"
+                    :schema="{
+                    properties: {
+                        value: {
+                        required: ['content', 'published'],
+                        properties: {
+                            content: { type: 'string' },
+                            published: { type: 'number' }
+                        }
+                        }
+                    }
+                    }"
+                >
+                    <ul>
+                    <li v-for="msg in messages.sort((a, b) => a.value.published - b.value.published)">
+                        <strong>{{ msg.actor }}</strong>: {{ msg.value.content }}
+                        <br />
+                        <small>{{ new Date(msg.value.published).toLocaleString() }}</small>
+                    </li>
+                    </ul>
+                </graffiti-discover>
+
+                <!-- send messages -->
+                <form @submit.prevent="sendMessage($graffitiSession.value)">
+                    <input v-model="myMessage" placeholder="Message..." />
+                    <button type="submit">Send</button>
+                </form>
+                </template>
+
+
+              </section>
+
+
+            <section v-if="currentTab === 'channels'" id="channels">
+                <h1>Channels</h1>
+
+                <h3>New Channel</h3>
+                <form @submit.prevent="createPrivateChannel($graffitiSession.value)">
+                    <input v-model="newChannelName" placeholder="Channel Name" />
+                    <input v-model="newChannelTopic" placeholder="Topic Tag (e.g. show, book)" />
+                    <input v-model="invitedUserId" placeholder="Invite User (user ID, optional)" />
+                    <button type="submit">Create</button>
+                </form>
+
+                <graffiti-discover
+                    v-slot="{ objects: inviteObjects }"
+                    :channels="['channel-invites']"
+                    :schema="{
+                        properties: {
+                            value: {
+                                required: ['activity', 'object', 'target'],
+                                properties: {
+                                    activity: { const: 'Add' },
+                                    object: { type: 'string' },
+                                    target: { type: 'string' }
+                                }
+                            }
+                        }
+                    }"
+                >
+                    <graffiti-discover
+                        v-slot="{ objects: createObjects }"
+                        :channels="['private-channel-directory']"
+                        :schema="{
+                            properties: {
+                                value: {
+                                    required: ['activity', 'object'],
+                                    properties: {
+                                        activity: { const: 'Create' },
+                                        object: {
+                                            required: ['type', 'name', 'channel'],
+                                            properties: {
+                                                type: { const: 'PrivateChannel' },
+                                                name: { type: 'string' },
+                                                topic: { type: 'string' },
+                                                channel: { type: 'string' }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }"
+                    >
+                        <h3>Channel Invitations</h3>
+                        <ul>
+                            <li v-for="invite in inviteObjects.filter(i => i.value.object === $graffitiSession.value.actor && !joinedChannels.includes(i.value.target))">
+                                <span>
+                                    Invitation from <strong>{{ invite.actor }}</strong> to join:
+                                    {{
+                                      createObjects.find(o => o.value.object.channel === invite.value.target)?.value.object.name || 'Unnamed'
+                                    }}
+                                    (Topic:
+                                    {{
+                                      createObjects.find(o => o.value.object.channel === invite.value.target)?.value.object.topic || 'unknown'
+                                    }})
+                                  </span>
+                                <button @click="join_chat(invite.value.target)">Join</button>
+                                <button @click=" delete_invite(invite)">Delete</button>
+                            </li>
+                        </ul>
+
+
+                        <h3>Your Channels</h3>
+                        <graffiti-discover
+                            v-slot="{ objects: nameObjects }"
+                            :channels="['designftw']"
+                            :schema="{
+                                properties: {
+                                    value: {
+                                        required: ['name', 'describes'],
+                                        properties: {
+                                            name: { type: 'string' },
+                                            describes: { type: 'string' }
+                                        }
+                                    }
+                                }
+                            }"
+                        >
+                            <ul>
+                                <li v-for="channel in joinedChannels" :key="channel">
+                                    <button @click="join_chat(channel)">
+                                        {{ current_group_name(nameObjects, channel) || 'Unnamed' }}
+                                    </button>
+                                </li>
+                            </ul>
+                            <hr >
+                        </graffiti-discover>
+                    </graffiti-discover>
+                </graffiti-discover>
+
+                <template v-if="$graffitiSession.value && selectedChannel">
+                    <!-- 1. Chat name + rename -->
+                    <graffiti-discover
+                        v-slot="{ objects: nameObjects }"
+                        :channels="['designftw']"
+                        :schema="{
+                            properties: {
+                                value: {
+                                    required: ['name', 'describes'],
+                                    properties: {
+                                        name: { type: 'string' },
+                                        describes: { type: 'string' }
+                                    }
+                                }
+                            }
+                        }"
+                    >
+                        <h2>{{ current_group_name(nameObjects, selectedChannel) || 'Unnamed Group Chat' }}</h2>
+                        <form @submit.prevent="rename_group($graffitiSession.value)">
+                            <input v-model="renameBuffer" placeholder="Rename this chat" />
+                            <input type="submit" value="Rename" />
+                        </form>
+                    </graffiti-discover>
+
+                    <!-- list of people in channel -->
+                    <graffiti-discover
+                        v-slot="{ objects: inviteObjects }"
+                        :channels="['channel-invites']"
+                        :schema="{
+                            properties: {
+                                value: {
+                                    required: ['activity', 'object', 'target'],
+                                    properties: {
+                                        activity: { const: 'Add' },
+                                        object: { type: 'string' },
+                                        target: { type: 'string' }
+                                    }
+                                }
+                            }
+                        }"
+                    >
+                    <!-- channel member functionality -->
+                        <div>
+                            <h4>Members in this chat:</h4>
+                            <ul>
+                                <li v-for="invite in inviteObjects.filter(i => i.value.target === selectedChannel)">
+                                    {{ invite.value.object }}
+                                    <span v-if="invite.value.object === $graffitiSession.value.actor"> (you)</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <h4>Add Member</h4>
+                            <form @submit.prevent="add_person_to_channel($graffitiSession.value)">
+                            <input v-model="newMemberId" placeholder="User ID" />
+                            <button type="submit">Add</button>
+                            </form>
+
+                    </graffiti-discover>
+
+                    <!-- list of messages -->
+                    <graffiti-discover
+                        v-slot="{ objects: messageObjects, isInitialPolling }"
+                        :channels="[selectedChannel]"
+                        :schema="{
+                            properties: {
+                                value: {
+                                    required: ['content', 'published'],
+                                    properties: {
+                                        content: { type: 'string' },
+                                        published: { type: 'number' }
+                                    }
+                                }
+                            }
+                        }"
+                    >
+                        <h4>Messages</h4>
+                        <ul>
+                            <li v-if="isInitialPolling">Loading...</li>
+                            <li v-for="object of messageObjects.sort((a, b) => b.value.published - a.value.published)" :key="object.url">
+                                <strong>
+                                    {{ object.actor }}
+                                    <span v-if="object.actor === $graffitiSession.value.actor">(you)</span>
+                                </strong>:
+                                <em style="font-size: 0.8em; color: gray; margin-left: 6px;">
+                                    {{ new Date(object.value.published).toLocaleString() }}
+                                </em><br />
+                                <span v-if="editing !== object.url">{{ object.value.content }}</span>
+                                <input v-else v-model="editBuffer" @keyup.enter="submitEdit(object)" />
+
+                                <template v-if="object.actor === $graffitiSession.value.actor">
+                                    <button v-if="editing !== object.url" @click="startEditing(object)">Edit</button>
+                                    <button v-if="editing === object.url" @click="cancelEdit">Cancel</button>
+                                    <button @click="deleteMessage(object)">Delete</button>
+                                </template>
+                            </li>
+                        </ul>
+                    </graffiti-discover>
+
+                    <!-- send a message -->
+                    <h4>Send a Message</h4>
+                    <form @submit.prevent="sendMessage($graffitiSession.value)">
+                        <fieldset :disabled="sending">
+                            <input
+                                type="text"
+                                v-model="myMessage"
+                                placeholder="Message"
+                                ref="messageInput"
+                                v-focus
+                            />
+                            <input type="submit" :value="sending ? 'Sending...' : 'Send'" />
+                        </fieldset>
+                    </form>
+                </template>
+
+            </section>
+        </div>
+
+        <script src="index.js" type="module"></script>
+    </body>
+</html>
