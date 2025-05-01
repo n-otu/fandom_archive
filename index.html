@@ -235,7 +235,7 @@
                   <!-- your fav forums -->
                   <graffiti-discover
                   v-slot="{ objects: starredObjects }"
-                  :channels="[ `starred-forums:${$graffitiSession.value.actor}` ]"
+                  :channels="[ `starred-forums:${$graffitiSession.value?.actor}` ]"
                   :schema="{
                     properties: {
                       value: {

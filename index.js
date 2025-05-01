@@ -233,7 +233,7 @@ update_profile(objects) {
         // uutomatically send a joined message
         this.$graffiti.put({
           value: {
-            content: `${this.$graffitiSession.value.actor} joined the chat.`,
+            content: `${this.$graffitiSession?.value?.actor} joined the chat.`,
             published: Date.now(),
             system: true
           },
@@ -247,7 +247,7 @@ update_profile(objects) {
     my_invites() {
         return this.inviteObjects.filter(
           (invite) =>
-            invite.value.object === this.$graffitiSession.value.actor &&
+            invite.value.object === this.$graffitiSession?.value?.actor &&
             !this.have_joined(invite.value.target)
         );
       },
@@ -255,7 +255,7 @@ update_profile(objects) {
       my_joined_channels() {
         return this.inviteObjects.filter(
           (invite) =>
-            invite.value.object === this.$graffitiSession.value.actor &&
+            invite.value.object === this.$graffitiSession?.value?.actor &&
             this.have_joined(invite.value.target)
         );
       },
@@ -373,7 +373,7 @@ update_profile(objects) {
       }, message, this.$graffitiSession.value);
       console.log("Submitting profile with:", {
         name: this.profileName,
-        describes: this.$graffitiSession.value.actor
+        describes: this.$graffitiSession?.value?.actor
       });
 
 
