@@ -2,10 +2,23 @@ import { createApp } from "vue";
 import { GraffitiLocal } from "@graffiti-garden/implementation-local";
 import { GraffitiRemote } from "@graffiti-garden/implementation-remote";
 import { GraffitiPlugin } from "@graffiti-garden/wrapper-vue";
+import { fileToGraffitiObject, graffitiFileSchema } from "@graffiti-garden/wrapper-files";
+import { GraffitiObjectToFile } from "@graffiti-garden/wrapper-files/vue";
 
-createApp({
+import LikeButton from './LikeButton.js';
+
+
+const app = createApp({
   data() {
     return {
+      graffitiFileSchema,
+      showProfileForm: false,
+      profileObjects: [],
+      latestProfile: null,
+      profileName: '',
+      profilePronouns: '',
+      profileBio: '',
+      profileIconUrl: '',
       selectedForumTopic: 'All',
       starredChannels: [],
       currentTab: 'home',
@@ -45,67 +58,99 @@ createApp({
 
 
   methods: {
+    forum_likes(url) {
+      // count likes for a forum by URL
+      const likes = this.starredChannels.filter(obj => obj.value.object === url);
+      return likes.length;
+    },
 
-    async toggleStarForum(channelId) {
-        if (!this.$graffitiSession.value) return;
+    async like_forum(url) {
+      if (!this.$graffitiSession.value) return;
 
-        const isStarred = this.starredChannelIds.includes(channelId);
-        if (isStarred) {
-          // Unstar: fetch all and delete the matching star
-          const stars = await this.$graffiti.discover({
-            channels: [`starred-forums:${this.$graffitiSession.value.actor}`],
-            schema: {
+      // check if already liked
+      const alreadyLiked = this.starredChannels.some(obj => obj.value.object === url);
+      if (alreadyLiked) return;
+
+      await this.$graffiti.put({
+        value: {
+          activity: "Like",
+          object: url
+        },
+        channels: [`starred-forums:${this.$graffitiSession.value.actor}`]
+      }, this.$graffitiSession.value);
+    },
+
+    async submitProfile() {
+      if (!this.$graffitiSession.value) return;
+
+      // save new profile object
+      await this.$graffiti.put({
+        value: {
+          name: this.profileName,
+          pronouns: this.profilePronouns,
+          bio: this.profileBio,
+          icon: this.profileIconUrl,
+          describes: this.$graffitiSession.value.actor,
+          published: Date.now()
+        },
+        channels: [this.$graffitiSession.value.actor]
+      }, this.$graffitiSession.value);
+
+      // get latest profile
+      const objects = await this.$graffiti.discover({
+        channels: [this.$graffitiSession.value.actor],
+        schema: {
+          properties: {
+            value: {
+              required: ['describes'],
               properties: {
-                value: {
-                  required: ['activity', 'object'],
-                  properties: {
-                    activity: { const: 'Star' },
-                    object: { type: 'string' }
-                  }
-                }
-              }
-            }
-          });
-          const match = stars.find(s => s.value.object === channelId);
-          if (match) await this.$graffiti.delete(match, this.$graffitiSession.value);
-        } else {
-          await this.starForum(channelId);
-        }
-      },
-
-    async starForum(channelId) {
-        if (!this.$graffitiSession.value) return;
-
-        // check if it's already starred
-        const stars = await this.$graffiti.discover({
-          channels: [`starred-forums:${this.$graffitiSession.value.actor}`],
-          schema: {
-            properties: {
-              value: {
-                required: ['activity', 'object'],
-                properties: {
-                  activity: { const: 'Star' },
-                  object: { type: 'string' }
-                }
+                describes: { type: 'string' }
               }
             }
           }
-        });
+        }
+      });
 
-        const alreadyStarred = stars.some(s => s.value.object === channelId);
-        if (alreadyStarred) return; // Exit early if already starred
+      let latest = null;
+      if (Array.isArray(objects)) {
+        latest = objects.sort((a, b) => (b.value.published || 0) - (a.value.published || 0))[0];
+      }
+      if (latest) {
+        this.latestProfile = latest.value;
+      }
 
-        await this.$graffiti.put({
-          value: {
-            activity: "Star",
-            object: channelId
-          },
-          channels: [`starred-forums:${this.$graffitiSession.value.actor}`],
-          allowed: undefined
-        }, this.$graffitiSession.value);
-      },
+      this.showProfileForm = false;
+    },
 
 
+async upload_file(event) {
+
+  const file = event.target.files[0];
+  if (!file) return;
+
+  try {
+    const graffitiObj = await fileToGraffitiObject(file);
+    const { url } = await this.$graffiti.put(graffitiObj, this.$graffitiSession.value);
+    this.profileIconUrl = url;
+    console.log("Uploaded file URL:", url);
+  } catch (err) {
+    console.error("File upload failed:", err);
+  }
+},
+
+
+update_profile(objects) {
+  console.log("Profile objects received:", objects);
+  const latest = objects[objects.length - 1]?.value;
+  if (!latest) return;
+
+  this.latestProfile = latest;
+  this.profileName = latest.name || '';
+  this.profilePronouns = latest.pronouns || '';
+  this.profileBio = latest.bio || '';
+  this.profileIconUrl = latest.icon || '';
+}
+,
 
     join_forum(channel) {
         this.selectedChannel = channel;
@@ -316,6 +361,11 @@ createApp({
           }
         ]
       }, message, this.$graffitiSession.value);
+      console.log("Submitting profile with:", {
+        name: this.profileName,
+        describes: this.$graffitiSession.value.actor
+      });
+
 
       this.cancelEdit();
     },
@@ -371,6 +421,11 @@ createApp({
 
   },
 
+  components: {
+    GraffitiObjectToFile
+  },
+
+
   computed: {
     userInviteChannel() {
         return `channel-invites:${this.$graffitiSession?.value?.actor || 'anon'}`;
@@ -387,8 +442,11 @@ createApp({
 
 },
 })
-  .use(GraffitiPlugin, {
+
+app.component('like-button', LikeButton);
+
+app.use(GraffitiPlugin, {
     graffiti: new GraffitiLocal(),
     // graffiti: new GraffitiRemote(),
   })
-  .mount("#app");
+app.mount("#app");

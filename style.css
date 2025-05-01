@@ -113,3 +113,80 @@ h1 {
   /* forums */
 
   /* channels */
+
+  /* profile */
+
+  .profile-container {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    margin: 2rem auto;
+    max-width: 600px;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 6px 6px 6px rgba(0, 0, 0, 0.05);
+  }
+
+  .profile-pic-wrapper {
+    flex-shrink: 0;
+  }
+
+  .profile-pic {
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #ccc;
+  }
+
+  .profile-info {
+    flex-grow: 1;
+    text-align: left;
+  }
+
+  .profile-info p {
+    margin: 0.5rem 0;
+  }
+
+  .edit-profile-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+
+  .edit-profile-form input[type="text"], .edit-profile-form input[type="file"], .edit-profile-form textarea {
+    padding: 0.5rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+
+  }
+
+  .edit-profile-form textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  .edit-profile-form button {
+    align-self: start;
+    padding: 0.5rem 1rem;
+    background-color: #00c0aa;
+    color: black;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  .edit-profile-form button:hover {
+    background-color: #f8d3f1;
+  }
+
+  /* icon to go to profile */
+  .profile-tab-button {
+    position: absolute;
+    top: 2rem;
+    right: 2rem;
+    font-size: 2rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
