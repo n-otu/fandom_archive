@@ -19,16 +19,57 @@
     <link rel="stylesheet" href="style.css" />
   </head>
 
-  
+
+
   <body>
     <div id="app">
       <nav>
         <button :class="{ active: currentTab === 'forums' }" @click="currentTab = 'forums'">Forums</button>
         <button :class="{ active: currentTab === 'home' }" @click="currentTab = 'home'">Home</button>
         <button :class="{ active: currentTab === 'channels' }" @click="currentTab = 'channels'">Channels</button>
-        <button v-if="$graffitiSession?.value" @click="currentTab = 'profile'" class="profile-tab-button" aria-label="Profile">
-          👤
-        </button>
+
+        <!-- profile icon, prof pic if there is one -->
+        <graffiti-discover
+          v-if="$graffitiSession?.value?.actor"
+          v-slot="{ objects }"
+          :channels="[$graffitiSession.value.actor]"
+          :schema="{
+            properties: {
+              value: {
+                required: ['describes'],
+                properties: {
+                  describes: { type: 'string' },
+                  icon: { type: 'string' },
+                  published: { type: 'number' }
+                }
+              }
+            }
+          }"
+        >
+          <template v-if="objects.length">
+            <template v-if="latestProfile = objects.slice().sort((a, b) => (b.value.published || 0) - (a.value.published || 0))[0].value">
+              <graffiti-get
+                v-if="latestProfile.icon"
+                :url="latestProfile.icon"
+                :schema="graffitiFileSchema"
+                v-slot="{ object }"
+              >
+                <graffiti-object-to-file :object="object" v-slot="{ fileDataUrl }">
+                  <button @click="currentTab = 'profile'" class="profile-tab-button" aria-label="Profile">
+                    <img
+                      :src="fileDataUrl"
+                      alt="Profile"
+                      style="width: 3rem; height: 3rem; border-radius: 50%; object-fit: cover"
+                    />
+                  </button>
+                </graffiti-object-to-file>
+              </graffiti-get>
+              <button v-else @click="currentTab = 'profile'" class="profile-tab-button" aria-label="Profile">
+                👤
+              </button>
+            </template>
+          </template>
+        </graffiti-discover>
       </nav>
 
       <button v-if="!$graffitiSession?.value" @click="$graffiti.login()" id="login">Log In</button>
@@ -72,8 +113,10 @@
                         alt="Profile picture"
                         style="width: 10rem; height: 10rem; border-radius: 50%; object-fit: cover; margin-bottom: 0.5rem"
                       />
+
                     </graffiti-object-to-file>
                   </graffiti-get>
+
                   <img
                     v-else
                     src="media/blank-profile-picture.webp"
@@ -107,9 +150,7 @@
             <input type="file" @change="upload_file" />
             <button type="submit">Save Profile</button>
           </form>
-
         </graffiti-discover>
-
       </section>
 
 
