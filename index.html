@@ -1,179 +1,162 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>The Fandom Archive</title>
-        <script type="importmap">
-            {
-                "imports": {
-                    "vue": "https://cdn.jsdelivr.net/npm/vue@3.5.13/dist/vue.esm-browser.js",
-                    "@graffiti-garden/implementation-local": "https://cdn.jsdelivr.net/npm/@graffiti-garden/implementation-local@0.6.4/dist/browser/index.js",
-                    "@graffiti-garden/implementation-remote": "https://cdn.jsdelivr.net/npm/@graffiti-garden/implementation-remote@0.6.2/dist/browser/index.js",
-                    "@graffiti-garden/wrapper-vue": "https://cdn.jsdelivr.net/npm/@graffiti-garden/wrapper-vue@0.7.2/dist/browser/plugin.mjs",
-                    "@graffiti-garden/wrapper-files": "https://cdn.jsdelivr.net/npm/@graffiti-garden/wrapper-files@0.0.1/dist/browser/index.js",
-                    "@graffiti-garden/wrapper-files/vue": "https://cdn.jsdelivr.net/npm/@graffiti-garden/wrapper-files@0.0.1/dist/vue/index.mjs"
-                  }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Fandom Archive</title>
+    <script type="importmap">
+      {
+        "imports": {
+          "vue": "https://cdn.jsdelivr.net/npm/vue@3.5.13/dist/vue.esm-browser.js",
+          "@graffiti-garden/implementation-local": "https://cdn.jsdelivr.net/npm/@graffiti-garden/implementation-local@0.6.4/dist/browser/index.js",
+          "@graffiti-garden/implementation-remote": "https://cdn.jsdelivr.net/npm/@graffiti-garden/implementation-remote@0.6.2/dist/browser/index.js",
+          "@graffiti-garden/wrapper-vue": "https://cdn.jsdelivr.net/npm/@graffiti-garden/wrapper-vue@0.7.2/dist/browser/plugin.mjs",
+          "@graffiti-garden/wrapper-files": "https://cdn.jsdelivr.net/npm/@graffiti-garden/wrapper-files@0.0.1/dist/browser/index.js",
+          "@graffiti-garden/wrapper-files/vue": "https://cdn.jsdelivr.net/npm/@graffiti-garden/wrapper-files@0.0.1/dist/vue/index.mjs"
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <nav>
+        <button :class="{ active: currentTab === 'forums' }" @click="currentTab = 'forums'">Forums</button>
+        <button :class="{ active: currentTab === 'home' }" @click="currentTab = 'home'">Home</button>
+        <button :class="{ active: currentTab === 'channels' }" @click="currentTab = 'channels'">Channels</button>
+      </nav>
+
+      <!-- profile icon -->
+      <template v-if="$graffitiSession?.value?.actor">
+        <graffiti-discover
+          v-slot="{ objects }"
+          :channels="[$graffitiSession.value.actor]"
+          :schema="{
+            properties: {
+              value: {
+                required: ['describes'],
+                properties: {
+                  describes: { type: 'string' },
+                  icon: { type: 'string' },
+                  published: { type: 'number' }
+                }
+              }
             }
-        </script>
+          }"
+        >
+          <template v-if="objects.length">
+            <template v-if="latestProfile = objects.slice().sort((a, b) => (b.value.published || 0) - (a.value.published || 0))[0].value">
+              <graffiti-get
+                v-if="latestProfile.icon"
+                :url="latestProfile.icon"
+                :schema="graffitiFileSchema"
+                v-slot="{ object }"
+              >
+                <graffiti-object-to-file :object="object" v-slot="{ fileDataUrl }">
+                  <button @click="currentTab = 'profile'" class="profile-tab-button" aria-label="Profile">
+                    <img
+                      :src="fileDataUrl"
+                      alt="Profile"
+                      style="width: 5rem; height: 5rem; border-radius: 50%; object-fit: cover;"
+                    />
+                  </button>
+                </graffiti-object-to-file>
+              </graffiti-get>
+              <button v-else @click="currentTab = 'profile'" class="profile-tab-button" aria-label="Profile">👤</button>
+            </template>
+          </template>
+        </graffiti-discover>
+      </template>
 
-        <link rel="stylesheet" href="style.css" />
-    </head>
-    <body>
-        <div id="app">
+      <button v-if="!$graffitiSession?.value" @click="$graffiti.login()" id="login">Log In</button>
+      <button v-if="$graffitiSession?.value" @click="$graffiti.logout($graffitiSession.value)" id="logout">Log Out</button>
 
-            <!-- navigation -->
-            <nav>
-                <button :class="{ active: currentTab === 'forums' }" @click="currentTab = 'forums'">Forums</button>
-                <button :class="{ active: currentTab === 'home' }" @click="currentTab = 'home'">Home</button>
-                <button :class="{ active: currentTab === 'channels' }" @click="currentTab = 'channels'">Channels</button>
-            </nav>
+        <section v-if="currentTab === 'profile' && $graffitiSession.value">
+            <h2>Profile</h2>
 
-            <!-- profile icon. if image uploaded as profile pic, will just be that instead -->
-                <graffiti-discover
-                v-if="$graffitiSession.value"
-                v-slot="{ objects }"
-                :channels="[$graffitiSession.value.actor]"
-                :schema="{
+            <graffiti-discover
+            v-slot="{ objects }"
+            :channels="[$graffitiSession.value.actor]"
+            :schema="{
                 properties: {
                     value: {
                     required: ['describes'],
                     properties: {
                         describes: { type: 'string' },
+                        name: { type: 'string' },
+                        pronouns: { type: 'string' },
+                        bio: { type: 'string' },
                         icon: { type: 'string' },
                         published: { type: 'number' }
                     }
                     }
                 }
                 }"
-                >
-                <template v-if="objects.length">
+            >
+            <template v-if="objects.length > 0">
+                <div>
                 <template v-if="latestProfile = objects.slice().sort((a, b) => (b.value.published || 0) - (a.value.published || 0))[0].value">
-                    <graffiti-get
-                    v-if="latestProfile.icon"
-                    :url="latestProfile.icon"
-                    :schema="graffitiFileSchema"
-                    v-slot="{ object }"
-                    >
-                    <graffiti-object-to-file :object="object" v-slot="{ fileDataUrl }">
-                        <button
-                        @click="currentTab = 'profile'"
-                        class="profile-tab-button"
-                        aria-label="Profile"
+                    <div style="display: flex; flex-direction: column; align-items: center; margin-top: 1rem;">
+
+                    <div class="profile-container">
+                    <div class="profile-pic-wrapper">
+
+                        <!-- Profile pic! -->
+                        <graffiti-get
+                        v-if="latestProfile.icon"
+                        :url="latestProfile.icon"
+                        :schema="graffitiFileSchema"
+                        v-slot="{ object }"
                         >
-                        <img
+                        <graffiti-object-to-file :object="object" v-slot="{ fileDataUrl }">
+                            <img
                             :src="fileDataUrl"
-                            alt="Profile"
-                            style="width: 5rem; height: 5rem; border-radius: 50%; object-fit: cover;"
+                            alt="Profile picture"
+                            style="width: 10rem; height: 10rem; border-radius: 50%; object-fit: cover; margin-bottom: 0.5rem"
+                            />
+                        </graffiti-object-to-file>
+                        </graffiti-get>
+
+                        <!-- no image uploaded yet -->
+                        <img
+                        v-else
+                        src="media/blank-profile-picture.webp"
+                        alt="Default profile"
+                        style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin-bottom: 0.5rem"
                         />
-                        </button>
-                    </graffiti-object-to-file>
-                    </graffiti-get>
+                    </div>
 
-                    <!-- if no prof image -->
-                    <button
-                    v-else
-                    @click="currentTab = 'profile'"
-                    class="profile-tab-button"
-                    aria-label="Profile"
-                    >
-                    👤
-                    </button>
-                </template>
-                </template>
-                </graffiti-discover>
+                    <div class="profile-info">
 
+                        <!-- profile info -->
+                        <p v-if="$graffitiSession && $graffitiSession.value"><strong>Username:</strong> {{ $graffitiSession.value.actor }}</p>
+                        <p><strong>Display Name:</strong> {{ latestProfile.name || '(none)' }}</p>
+                        <p><strong>Pronouns:</strong> {{ latestProfile.pronouns || '(none)' }}</p>
+                        <p><strong>Bio:</strong> {{ latestProfile.bio || '(none)' }}</p>
+                    </div>
+                    </div>
+                    </template>
 
-            <!-- logging in and out -->
-            <button v-if="!$graffitiSession.value" @click="$graffiti.login()" id="login">Log In</button>
-            <button @click="$graffiti.logout($graffitiSession.value)" id="logout">Log Out</button>
+                </div>
+            </template>
+            <template v-else>
+                <p>No profile found yet. Fill out the form below to create one.</p>
+            </template>
 
-            <section v-if="currentTab === 'profile' && $graffitiSession.value">
-                <h2>Profile</h2>
+            <button @click="showProfileForm = !showProfileForm">
+                {{ showProfileForm ? 'Done' : 'Edit Profile' }}
+                </button>
 
-                <graffiti-discover
-                v-slot="{ objects }"
-                :channels="[$graffitiSession.value.actor]"
-                :schema="{
-                    properties: {
-                      value: {
-                        required: ['describes'],
-                        properties: {
-                          describes: { type: 'string' },
-                          name: { type: 'string' },
-                          pronouns: { type: 'string' },
-                          bio: { type: 'string' },
-                          icon: { type: 'string' },
-                          published: { type: 'number' }
-                        }
-                      }
-                    }
-                  }"
-              >
-                <template v-if="objects.length > 0">
-                  <div>
-                    <template v-if="latestProfile = objects.slice().sort((a, b) => (b.value.published || 0) - (a.value.published || 0))[0].value">
-                        <div style="display: flex; flex-direction: column; align-items: center; margin-top: 1rem;">
+                <form v-if="showProfileForm" @submit.prevent="submitProfile" class="edit-profile-form">
+                <input v-model="profileName" placeholder="Display Name" />
+                <input v-model="profilePronouns" placeholder="Pronouns" />
+                <textarea v-model="profileBio" placeholder="Short bio"></textarea>
+                <input type="file" @change="upload_file" />
 
-                        <div class="profile-container">
-                        <div class="profile-pic-wrapper">
+                <button type="submit">Save Profile</button>
+                </form>
 
-                          <!-- Profile pic! -->
-                          <graffiti-get
-                            v-if="latestProfile.icon"
-                            :url="latestProfile.icon"
-                            :schema="graffitiFileSchema"
-                            v-slot="{ object }"
-                          >
-                            <graffiti-object-to-file :object="object" v-slot="{ fileDataUrl }">
-                              <img
-                                :src="fileDataUrl"
-                                alt="Profile picture"
-                                style="width: 10rem; height: 10rem; border-radius: 50%; object-fit: cover; margin-bottom: 0.5rem"
-                              />
-                            </graffiti-object-to-file>
-                          </graffiti-get>
-
-                          <!-- no image uploaded yet -->
-                          <img
-                            v-else
-                            src="media/blank-profile-picture.webp"
-                            alt="Default profile"
-                            style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; margin-bottom: 0.5rem"
-                          />
-                        </div>
-
-                        <div class="profile-info">
-
-                          <!-- profile info -->
-                          <p v-if="$graffitiSession && $graffitiSession.value"><strong>Username:</strong> {{ $graffitiSession.value.actor }}</p>
-                          <p><strong>Display Name:</strong> {{ latestProfile.name || '(none)' }}</p>
-                          <p><strong>Pronouns:</strong> {{ latestProfile.pronouns || '(none)' }}</p>
-                          <p><strong>Bio:</strong> {{ latestProfile.bio || '(none)' }}</p>
-                        </div>
-                        </div>
-                      </template>
-
-                  </div>
-                </template>
-                <template v-else>
-                  <p>No profile found yet. Fill out the form below to create one.</p>
-                </template>
-
-                <button @click="showProfileForm = !showProfileForm">
-                    {{ showProfileForm ? 'Done' : 'Edit Profile' }}
-                  </button>
-
-                  <form v-if="showProfileForm" @submit.prevent="submitProfile" class="edit-profile-form">
-                    <input v-model="profileName" placeholder="Display Name" />
-                    <input v-model="profilePronouns" placeholder="Pronouns" />
-                    <textarea v-model="profileBio" placeholder="Short bio"></textarea>
-                    <input type="file" @change="upload_file" />
-
-                    <button type="submit">Save Profile</button>
-                  </form>
-
-              </graffiti-discover>
+            </graffiti-discover>
 
 
               </section>
