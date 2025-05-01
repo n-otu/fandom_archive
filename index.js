@@ -65,9 +65,9 @@ const app = createApp({
     },
 
     async like_forum(url) {
-      if (!this.$graffitiSession.value) return;
+      const session = this.$graffitiSession?.value;
+      if (!session) return;
 
-      // check if already liked
       const alreadyLiked = this.starredChannels.some(obj => obj.value.object === url);
       if (alreadyLiked) return;
 
@@ -76,12 +76,15 @@ const app = createApp({
           activity: "Like",
           object: url
         },
-        channels: [`starred-forums:${this.$graffitiSession.value.actor}`]
-      }, this.$graffitiSession.value);
+        channels: [`starred-forums:${session.actor}`]
+      }, session);
     },
 
     async submitProfile() {
-      if (!this.$graffitiSession.value) return;
+      const session = this.$graffitiSession?.value;
+      const actor = session?.actor;
+
+      if (!session || !actor) return;
 
       // save new profile object
       await this.$graffiti.put({
@@ -90,15 +93,15 @@ const app = createApp({
           pronouns: this.profilePronouns,
           bio: this.profileBio,
           icon: this.profileIconUrl,
-          describes: this.$graffitiSession.value.actor,
+          describes: actor,
           published: Date.now()
         },
-        channels: [this.$graffitiSession.value.actor]
-      }, this.$graffitiSession.value);
+        channels: [actor]
+      }, session);
 
-      // get latest profile
+      // get latest profile info
       const objects = await this.$graffiti.discover({
-        channels: [this.$graffitiSession.value.actor],
+        channels: [actor],
         schema: {
           properties: {
             value: {
@@ -115,6 +118,7 @@ const app = createApp({
       if (Array.isArray(objects)) {
         latest = objects.sort((a, b) => (b.value.published || 0) - (a.value.published || 0))[0];
       }
+
       if (latest) {
         this.latestProfile = latest.value;
       }
@@ -123,20 +127,25 @@ const app = createApp({
     },
 
 
-async upload_file(event) {
 
-  const file = event.target.files[0];
-  if (!file) return;
+    async upload_file(event) {
 
-  try {
-    const graffitiObj = await fileToGraffitiObject(file);
-    const { url } = await this.$graffiti.put(graffitiObj, this.$graffitiSession.value);
-    this.profileIconUrl = url;
-    console.log("Uploaded file URL:", url);
-  } catch (err) {
-    console.error("File upload failed:", err);
-  }
-},
+      const session = this.$graffitiSession?.value;
+      if (!session) return;
+
+      const file = event.target.files[0];
+      if (!file) return;
+
+      try {
+        const graffitiObj = await fileToGraffitiObject(file);
+        const { url } = await this.$graffiti.put(graffitiObj, session);
+        this.profileIconUrl = url;
+        console.log("Uploaded file URL:", url);
+      } catch (err) {
+        console.error("File upload failed:", err);
+      }
+    },
+
 
 
 update_profile(objects) {
@@ -160,28 +169,29 @@ update_profile(objects) {
       },
 
     //   all forums are public and universal
-      async create_forum(session) {
-        if (!this.newForumName || !this.newForumTopic) return;
+    async create_forum(session) {
 
-        const channelId = `forum:${crypto.randomUUID()}`;
+      if (!session || !this.newForumName || !this.newForumTopic) return;
 
-        await this.$graffiti.put({
-          value: {
-            activity: 'Create',
-            object: {
-              type: 'Forum',
-              name: this.newForumName,
-              topic: this.newForumTopic,
-              channel: channelId
-            }
-          },
-          channels: ['global-forums'],
-          allowed: undefined
-        }, session);
+      const channelId = `forum:${crypto.randomUUID()}`;
 
-        this.newForumName = '';
-        this.newForumTopic = '';
-      },
+      await this.$graffiti.put({
+        value: {
+          activity: 'Create',
+          object: {
+            type: 'Forum',
+            name: this.newForumName,
+            topic: this.newForumTopic,
+            channel: channelId
+          }
+        },
+        channels: ['global-forums'],
+        allowed: undefined
+      }, session);
+
+      this.newForumName = '';
+      this.newForumTopic = '';
+    },
 
 
 
@@ -396,25 +406,22 @@ update_profile(objects) {
 
 
     async sendMessage(session) {
-      if (!this.myMessage) return;
+      if (!session || !this.myMessage) return;
 
       this.sending = true;
 
-      await this.$graffiti.put(
-        {
-          value: {
-            content: this.myMessage,
-            published: Date.now(),
-          },
-          channels: [this.selectedChannel],
+      await this.$graffiti.put({
+        value: {
+          content: this.myMessage,
+          published: Date.now(),
         },
-        session,
-      );
+        channels: [this.selectedChannel],
+      }, session);
 
       this.sending = false;
       this.myMessage = "";
 
-      // Refocus the input field after sending the message
+      // refocus input field after sending
       await this.$nextTick();
       this.$refs.messageInput.focus();
     },
@@ -426,22 +433,21 @@ update_profile(objects) {
   },
 
 
-  computed: {
+  computed:  {
     userInviteChannel() {
-        return `channel-invites:${this.$graffitiSession?.value?.actor || 'anon'}`;
-        },
-        userDirectoryChannel() {
-        return `private-channel-directory:${this.$graffitiSession?.value?.actor || 'anon'}`;
-        },
-        userNameChannel() {
-        return `channel-names:${this.$graffitiSession?.value?.actor || 'anon'}`;
-        },
-        starredChannelIds() {
-            return this.starredChannels.map(obj => obj.value.object);
-          }
-
-},
-})
+      return `channel-invites:${this.$graffitiSession?.value?.actor || 'anon'}`;
+    },
+    userDirectoryChannel() {
+      return `private-channel-directory:${this.$graffitiSession?.value?.actor || 'anon'}`;
+    },
+    userNameChannel() {
+      return `channel-names:${this.$graffitiSession?.value?.actor || 'anon'}`;
+    },
+    starredChannelIds() {
+      return this.starredChannels.map(obj => obj.value.object);
+    }
+  },
+});
 
 app.component('like-button', LikeButton);
 

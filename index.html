@@ -146,7 +146,7 @@
                         <div class="profile-info">
 
                           <!-- profile info -->
-                          <p><strong>Username:</strong> {{ $graffitiSession.value.actor }}</p>
+                          <p v-if="$graffitiSession && $graffitiSession.value"><strong>Username:</strong> {{ $graffitiSession.value.actor }}</p>
                           <p><strong>Display Name:</strong> {{ latestProfile.name || '(none)' }}</p>
                           <p><strong>Pronouns:</strong> {{ latestProfile.pronouns || '(none)' }}</p>
                           <p><strong>Bio:</strong> {{ latestProfile.bio || '(none)' }}</p>
