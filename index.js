@@ -90,13 +90,17 @@ const app = createApp({
       await this.$graffiti.put({
         value: {
           name: this.profileName,
+          generator: "https://n-otu.github.io/fandom_archive/",
           pronouns: this.profilePronouns,
           bio: this.profileBio,
           icon: this.profileIconUrl,
           describes: actor,
           published: Date.now()
         },
-        channels: [actor]
+        channels: [
+          actor,
+        "designftw-2025-studio1",
+      ]
       }, session);
 
       // get latest profile info
@@ -452,7 +456,7 @@ update_profile(objects) {
 app.component('like-button', LikeButton);
 
 app.use(GraffitiPlugin, {
-    graffiti: new GraffitiLocal(),
-    // graffiti: new GraffitiRemote(),
+    // graffiti: new GraffitiLocal(),
+    graffiti: new GraffitiRemote(),
   })
 app.mount("#app");
