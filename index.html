@@ -383,14 +383,29 @@
             <section v-if="currentTab === 'channels'" id="channels">
                 <h1>Channels</h1>
 
-                <h3>New Channel</h3>
-                <form @submit.prevent="createPrivateChannel($graffitiSession.value)">
-                    <input v-model="newChannelName" placeholder="Channel Name" />
-                    <input v-model="newChannelTopic" placeholder="Topic Tag (e.g. show, book)" />
-                    <input v-model="invitedUserId" placeholder="Invite User (user ID, optional)" />
-                    <button type="submit">Create</button>
-                </form>
 
+                <!-- toggle button to make a new channel -->
+
+                <button @click="showNewChannelModal = !showNewChannelModal">
+                  {{ showNewChannelModal ? 'Hide New Channel Form' : 'New Channel' }}
+                </button>
+
+                <Popup v-if="showNewChannelModal" @close="showNewChannelModal = false">
+                  <h3>Make a New Channel!</h3>
+                  <form @submit.prevent="createPrivateChannel($graffitiSession.value)">
+                      <input v-model="newChannelName" placeholder="Channel Name" />
+                      <input v-model="newChannelTopic" placeholder="Topic Tag (e.g. show, book)" />
+                      <input v-model="invitedUserId" placeholder="Invite User (user ID, optional)" />
+                      <button type="submit">Create</button>
+                  </form>
+                </Popup>
+
+                <!-- toggle for Channel Invitations -->
+              <button @click="showInvitations = !showInvitations">
+                {{ showInvitations ? 'Hide Invitations' : 'Channel Invitations' }}
+              </button>
+
+              <Popup v-if="showInvitesModal" @close="showInvitesModal = false">
                 <graffiti-discover
                     v-slot="{ objects: inviteObjects }"
                     :channels="['channel-invites']"
@@ -448,8 +463,12 @@
                             </li>
                         </ul>
 
+                    </graffiti-discover>
+                </graffiti-discover>
 
-                        <h3>Your Channels</h3>
+              </Popup>
+
+              <h3>Your Channels</h3>
                         <graffiti-discover
                             v-slot="{ objects: nameObjects }"
                             :channels="['designftw']"
@@ -474,8 +493,6 @@
                             </ul>
                             <hr >
                         </graffiti-discover>
-                    </graffiti-discover>
-                </graffiti-discover>
 
                 <template v-if="$graffitiSession.value && selectedChannel">
                     <!-- 1. Chat name + rename -->

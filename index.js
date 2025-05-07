@@ -4,13 +4,17 @@ import { GraffitiRemote } from "@graffiti-garden/implementation-remote";
 import { GraffitiPlugin } from "@graffiti-garden/wrapper-vue";
 import { fileToGraffitiObject, graffitiFileSchema } from "@graffiti-garden/wrapper-files";
 import { GraffitiObjectToFile } from "@graffiti-garden/wrapper-files/vue";
-
+import Popup from './Popup.js';
 import LikeButton from './LikeButton.js';
 
 
 const app = createApp({
   data() {
     return {
+      showNewChannelModal: false,
+      showInvitesModal: false,
+      showNewChannelForm: false,
+      showInvitations: false,
       graffitiFileSchema,
       showProfileForm: false,
       profileObjects: [],
@@ -523,7 +527,7 @@ app.directive('focus', {
 });
 
 app.component('like-button', LikeButton);
-
+app.component('Popup', Popup)
 app.use(GraffitiPlugin, {
     // graffiti: new GraffitiLocal(),
     graffiti: new GraffitiRemote(),

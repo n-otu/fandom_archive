@@ -26,29 +26,40 @@ fieldset {
     display: contents;
 }
 
-nav {
+  nav {
     display: flex;
     gap: 1rem;
+    padding: 1rem;
     border-bottom: 1px solid #ddd;
-    padding-bottom: 1rem;
-    margin-bottom: 2rem;
+    position: relative;
     justify-content: center;
   }
 
   nav button {
     background: none;
     border: none;
-    font-size: 1rem;
-    padding: 0.5rem 0.75rem;
+    font-size: 1.1rem;
+    padding: 0.5rem 1rem;
+    position: relative;
     cursor: pointer;
-    font-weight: 500;
+    transition: color 200ms ease;
   }
 
-  nav button.active {
-    border-bottom: 2px solid #333;
+  nav button::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 2px;
+    width: 100%;
+    background: #000;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 250ms ease;
   }
-  nav button:hover {
-    background-color: rgb(255, 231, 255);
+
+  nav button.active::after {
+    transform: scaleX(1);
   }
 
 
@@ -189,4 +200,32 @@ h1 {
     background: none;
     border: none;
     cursor: pointer;
+  }
+
+  /* popup form styling */
+
+  .modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+
+  .modal-content {
+    /* background: white; */
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    animation: fadeIn 300ms ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
   }
