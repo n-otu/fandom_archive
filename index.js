@@ -58,6 +58,14 @@ const app = createApp({
 
 
   methods: {
+    getLatestProfile(objects) {
+      if (!objects || objects.length === 0) return null;
+      return objects
+        .slice()
+        .sort((a, b) => (b.value.published || 0) - (a.value.published || 0))[0]
+        .value || null;
+    },
+
     forum_likes(url) {
       // count likes for a forum by URL
       const likes = this.starredChannels.filter(obj => obj.value.object === url);
@@ -152,18 +160,33 @@ const app = createApp({
 
 
 
-update_profile(objects) {
-  console.log("Profile objects received:", objects);
-  const latest = objects[objects.length - 1]?.value;
-  if (!latest) return;
+    update_profile(objects) {
 
-  this.latestProfile = latest;
-  this.profileName = latest.name || '';
-  this.profilePronouns = latest.pronouns || '';
-  this.profileBio = latest.bio || '';
-  this.profileIconUrl = latest.icon || '';
-}
-,
+      if (!objects.length) {
+        // new user w/ no profile, create profile w/ all blank fields
+        this.latestProfile = null;
+        this.profileName = '';
+        this.profilePronouns = '';
+        this.profileBio = '';
+        this.profileIconUrl = '';
+        this.showProfileForm = true;
+        // return;
+      }
+
+      const latest = objects
+        .slice()
+        .sort((a, b) => (b.value.published || 0) - (a.value.published || 0))[0]?.value;
+
+      if (latest) {
+        this.latestProfile = latest;
+        this.profileName = latest.name || '';
+        this.profilePronouns = latest.pronouns || '';
+        this.profileBio = latest.bio || '';
+        this.profileIconUrl = latest.icon || '';
+        this.showProfileForm = false;
+      }
+    },
+
 
     join_forum(channel) {
         this.selectedChannel = channel;
@@ -432,6 +455,45 @@ update_profile(objects) {
 
   },
 
+  mounted() {
+    this.$watch(
+      () => this.$graffitiSession?.value?.actor,
+      async (actor) => {
+        if (!actor) return;
+
+        const objects = await this.$graffiti.discover({
+          channels: [actor],
+          schema: {
+            properties: {
+              value: {
+                properties: {
+                  describes: { type: 'string' },
+                  name: { type: 'string' },
+                  pronouns: { type: 'string' },
+                  bio: { type: 'string' },
+                  icon: { type: 'string' },
+                  published: { type: 'number' }
+                }
+              }
+            }
+          }
+        });
+
+
+        if (Array.isArray(objects)) {
+          this.update_profile(objects);
+        } else {
+          this.update_profile([]);
+          console.warn("Expected array of objects from discover(), got:", objects);
+        }
+      },
+      { immediate: true }
+    );
+
+  },
+
+
+
   components: {
     GraffitiObjectToFile
   },
@@ -451,6 +513,13 @@ update_profile(objects) {
       return this.starredChannels.map(obj => obj.value.object);
     }
   },
+});
+
+// fix focusing issue
+app.directive('focus', {
+  mounted(el) {
+    el.focus();
+  }
 });
 
 app.component('like-button', LikeButton);
