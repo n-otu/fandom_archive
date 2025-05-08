@@ -11,6 +11,16 @@ import LikeButton from './LikeButton.js';
 const app = createApp({
   data() {
     return {
+      welcomeMessage: '',
+      showWelcome: false,
+      selectedForum: null,
+      forumObjects: [],
+      newForumDescription: '',
+      forumIconUrl: '',
+      showNewForumModal: false,
+      showSidebar: true,
+      currentChannelIconUrl: '',
+      currentChannelName: '',
       showNewChannelModal: false,
       showInvitesModal: false,
       showNewChannelForm: false,
@@ -62,6 +72,80 @@ const app = createApp({
 
 
   methods: {
+
+    getPrivateChannelName(channelId) {
+      const meta = this.privateChannelMetaObjects?.find(
+        obj => obj.value?.object?.channel === channelId
+      );
+      return meta?.value?.object?.name || channelId;
+    }
+,
+
+    goBackToForums() {
+      this.selectedChannel = null;
+
+      const url = new URL(window.location);
+      url.searchParams.delete('channel');
+      window.history.pushState({}, '', url);
+    },
+
+
+
+    async discoverLikes() {
+      const actor = this.$graffitiSession?.value?.actor;
+      if (!actor) return;
+
+      const likes = await this.$graffiti.discover({
+        channels: [`starred-forums:${actor}`],
+        schema: {
+          properties: {
+            value: {
+              type: 'object',
+              required: ['activity', 'object'],
+              properties: {
+                activity: { const: 'Like' },
+                object: { type: 'string' }
+              }
+            }
+          }
+        }
+      });
+
+      console.log("Found likes from discoverLikes():", likes);
+      this.starredChannels = Array.isArray(likes) ? likes : [];
+    },
+
+    getForumNameFromChannel(channelId) {
+      if (!Array.isArray(this.forumObjects)) return channelId;
+      const forum = this.forumObjects.find(f => f.value.object.channel === channelId);
+      return forum ? forum.value.object.name : channelId;
+    }
+    ,
+
+    open_channel(channelId) {
+      console.log("Opening channel:", channelId);
+      this.selectedChannel = channelId;
+      this.currentTab = 'channels';
+
+      const url = new URL(window.location);
+      url.searchParams.set("channel", channelId);
+      window.history.pushState({}, '', url);
+    },
+
+
+    goBackToChannels() {
+      this.selectedChannel = null;
+
+      // clear query param from url w/o reloading
+      const url = new URL(window.location);
+      url.searchParams.delete('channel');
+      window.history.pushState({}, '', url);
+
+      // scroll to top of channels
+      const channelsSection = document.getElementById('channels');
+      if (channelsSection) channelsSection.scrollIntoView({ behavior: 'smooth' });
+    },
+
     getLatestProfile(objects) {
       if (!objects || objects.length === 0) return null;
       return objects
@@ -76,21 +160,53 @@ const app = createApp({
       return likes.length;
     },
 
-    async like_forum(url) {
+    async like_forum(channelId) {
       const session = this.$graffitiSession?.value;
-      if (!session) return;
+      if (!session || !channelId) return;
 
-      const alreadyLiked = this.starredChannels.some(obj => obj.value.object === url);
+      const alreadyLiked = this.starredChannels.some(obj => obj.value.object === channelId);
       if (alreadyLiked) return;
 
+      console.log("Liking forum:", channelId);
+
+      // Create Like object
       await this.$graffiti.put({
         value: {
           activity: "Like",
-          object: url
+          object: channelId
         },
         channels: [`starred-forums:${session.actor}`]
       }, session);
+
+      // Refetch likes
+      const updatedLikes = await this.$graffiti.discover({
+        channels: [`starred-forums:${session.actor}`],
+        schema: {
+          properties: {
+            value: {
+              type: 'object',
+              required: ['activity', 'object'],
+              properties: {
+                activity: { const: 'Like' },
+                object: { type: 'string' }
+              }
+            }
+          }
+        }
+      });
+
+      console.log("Likes loaded after like:", updatedLikes);
+
+      this.starredChannels = Array.isArray(updatedLikes) ? updatedLikes : [];
+    }
+,
+
+
+    forum_like_count(channelId) {
+      return this.starredChannels.filter(obj => obj.value.object === channelId).length;
     },
+
+
 
     async submitProfile() {
       const session = this.$graffitiSession?.value;
@@ -147,20 +263,29 @@ const app = createApp({
     async upload_file(event) {
 
       const session = this.$graffitiSession?.value;
-      if (!session) return;
-
       const file = event.target.files[0];
-      if (!file) return;
+      if (!session || !file) return;
 
       try {
         const graffitiObj = await fileToGraffitiObject(file);
         const { url } = await this.$graffiti.put(graffitiObj, session);
-        this.profileIconUrl = url;
+
+        // use a flag to determine profile or channel
+        if (this.showProfileForm) {
+          this.profileIconUrl = url;
+        } else if (this.showNewChannelModal) {
+          this.channelIconUrl = url;
+        }
+        else if (this.showNewForumModal) {
+          this.forumIconUrl = url;
+        }
+
         console.log("Uploaded file URL:", url);
       } catch (err) {
         console.error("File upload failed:", err);
       }
     },
+
 
 
 
@@ -193,10 +318,13 @@ const app = createApp({
 
 
     join_forum(channel) {
-        this.selectedChannel = channel;
-        if (!this.channels.includes(channel)) {
-          this.channels.push(channel);
-        }
+
+      this.selectedChannel = channel;
+      this.currentTab = 'forums';
+
+      const url = new URL(window.location);
+      url.searchParams.set("channel", channel);
+      window.history.pushState({}, '', url);
       },
 
     //   all forums are public and universal
@@ -213,7 +341,10 @@ const app = createApp({
             type: 'Forum',
             name: this.newForumName,
             topic: this.newForumTopic,
-            channel: channelId
+            channel: channelId,
+            description: this.newForumDescription,
+            icon: this.forumIconUrl
+
           }
         },
         channels: ['global-forums'],
@@ -222,6 +353,9 @@ const app = createApp({
 
       this.newForumName = '';
       this.newForumTopic = '';
+      this.newForumDescription = '';
+      this.forumIconUrl = '';
+      this.showNewForumModal = false;
     },
 
 
@@ -248,8 +382,9 @@ const app = createApp({
       },
 
       join_chat(channel) {
+
         if (!this.joinedChannels.includes(channel)) {
-          this.joinedChannels.push(channel);
+          this.joinedChannels = [...new Set([...this.joinedChannels, channel])];
         }
         this.selectedChannel = channel;
 
@@ -261,7 +396,7 @@ const app = createApp({
           this.channels.push('designftw');
         }
 
-        // uutomatically send a joined message
+        // send a join message
         this.$graffiti.put({
           value: {
             content: `${this.$graffitiSession?.value?.actor} joined the chat.`,
@@ -270,6 +405,16 @@ const app = createApp({
           },
           channels: [channel]
         }, this.$graffitiSession.value);
+
+        if (this.currentTab === 'channels') {
+          const name = this.getPrivateChannelName(channel);
+          this.welcomeMessage = `🎉 Welcome to our channel!`;
+          this.showWelcome = true;
+          setTimeout(() => {
+            this.showWelcome = false;
+          }, 3000);
+        }
+
       },
 
 
@@ -309,7 +454,8 @@ const app = createApp({
               type: "PrivateChannel",
               name: this.newChannelName,
               topic: this.newChannelTopic,
-              channel: channelId
+              channel: channelId,
+              icon: this.channelIconUrl
             }
           },
           channels: ["private-channel-directory"],
@@ -452,49 +598,215 @@ const app = createApp({
       this.sending = false;
       this.myMessage = "";
 
+
+
+
       // refocus input field after sending
       await this.$nextTick();
       this.$refs.messageInput.focus();
+
+      // animation
+      await this.$nextTick(() => {
+        const newEl = this.$refs.newMessage;
+        if (newEl && newEl.classList) {
+          newEl.classList.add('message-slide-in');
+          setTimeout(() => {
+            newEl.classList.remove('message-slide-in');
+          }, 300);
+        }
+      });
     },
 
   },
 
-  mounted() {
+  mounted: async function () {
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const channelFromUrl = urlParams.get('channel');
+    if (channelFromUrl) {
+      this.selectedChannel = channelFromUrl;
+      if (!this.joinedChannels.includes(channelFromUrl)) {
+        this.joinedChannels.push(channelFromUrl);
+      }
+
+      // decide tab by checking if it's a forum or private channel
+      if (channelFromUrl.startsWith("forum:")) {
+        this.currentTab = 'forums';
+      } else {
+        this.currentTab = 'channels';
+      }
+    }
+
+
+    // watch for login changes and load data
     this.$watch(
       () => this.$graffitiSession?.value?.actor,
       async (actor) => {
         if (!actor) return;
 
-        const objects = await this.$graffiti.discover({
-          channels: [actor],
-          schema: {
-            properties: {
-              value: {
+        try {
+          // load accepted invites
+          let invites = [];
+          try {
+            const res = await this.$graffiti.discover({
+              channels: ['channel-invites'],
+              schema: {
                 properties: {
-                  describes: { type: 'string' },
-                  name: { type: 'string' },
-                  pronouns: { type: 'string' },
-                  bio: { type: 'string' },
-                  icon: { type: 'string' },
-                  published: { type: 'number' }
+                  value: {
+                    required: ['activity', 'object', 'target'],
+                    properties: {
+                      activity: { const: 'Add' },
+                      object: { type: 'string' },
+                      target: { type: 'string' }
+                    }
+                  }
                 }
               }
-            }
+            });
+            if (Array.isArray(res)) invites = res;
+          } catch (err) {
+            console.warn("Error loading invites:", err);
           }
-        });
+
+          const accepted = invites.filter(i => i.value.object === actor);
+          const acceptedChannels = accepted.map(i => i.value.target);
+          const allJoined = new Set([...this.joinedChannels, ...acceptedChannels]);
+          this.joinedChannels = Array.from(allJoined);
+
+          // load profile
+          let profileObjects = [];
+          try {
+            const meta = await this.$graffiti.discover({
+              channels: ['private-channel-directory'],
+              schema: {
+                properties: {
+                  value: {
+                    required: ['activity', 'object'],
+                    properties: {
+                      activity: { const: 'Create' },
+                      object: {
+                        required: ['type', 'name', 'channel'],
+                        properties: {
+                          type: { const: 'PrivateChannel' },
+                          name: { type: 'string' },
+                          topic: { type: 'string' },
+                          channel: { type: 'string' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            });
+            this.privateChannelMetaObjects = meta;
+
+            const res = await this.$graffiti.discover({
+              channels: [actor],
+              schema: {
+                properties: {
+                  value: {
+                    properties: {
+                      describes: { type: 'string' },
+                      name: { type: 'string' },
+                      pronouns: { type: 'string' },
+                      bio: { type: 'string' },
+                      icon: { type: 'string' },
+                      published: { type: 'number' }
+                    }
+                  }
+                }
+              }
+            });
+            if (Array.isArray(res)) profileObjects = res;
+          } catch (err) {
+            console.warn("Error loading profile:", err);
+          }
+          this.update_profile(profileObjects);
+
+          // load liked forums
+          let likes = [];
+          try {
+            const res = await this.$graffiti.discover({
+              channels: [`starred-forums:${actor}`],
+              schema: {
+                properties: {
+                  value: {
+                    type: 'object',
+                    required: ['activity', 'object'],
+                    properties: {
+                      activity: { const: 'Like' },
+                      object: { type: 'string' }
+                    }
+                  }
+                }
+              }
+            });
+            if (Array.isArray(res)) likes = res;
+            else console.warn("Expected likes array, got:", res);
+          } catch (err) {
+            console.warn("Error loading likes:", err);
+          }
+          this.starredChannels = likes;
+
+          // get forum metadata
+          let forums = [];
+          try {
+            const res = await this.$graffiti.discover({
+              channels: ['global-forums'],
+              schema: {
+                properties: {
+                  value: {
+                    required: ['activity', 'object'],
+                    properties: {
+                      activity: { const: 'Create' },
+                      object: {
+                        required: ['type', 'name', 'topic', 'channel'],
+                        properties: {
+                          type: { const: 'Forum' },
+                          name: { type: 'string' },
+                          topic: { type: 'string' },
+                          channel: { type: 'string' }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            });
+            if (Array.isArray(res)) forums = res;
+          } catch (err) {
+            console.warn("Error loading forums:", err);
+          }
+          this.forumObjects = forums;
+          console.log("Loaded forums:", this.forumObjects);
+          console.log("Loaded likes:", this.starredChannels);
 
 
-        if (Array.isArray(objects)) {
-          this.update_profile(objects);
-        } else {
-          this.update_profile([]);
-          console.warn("Expected array of objects from discover(), got:", objects);
+        } catch (err) {
+          console.error("Error during mounted() login setup:", err);
         }
       },
       { immediate: true }
+
+
     );
 
+    // loading screen
+    window.addEventListener("load", () => {
+      const screen = document.getElementById("loading-screen");
+      if (screen) {
+        screen.style.opacity = 0;
+        setTimeout(() => {
+          screen.style.display = "none";
+        }, 400); // matches transition time
+      }
+    });
+
+
   },
+
+
+
 
 
 

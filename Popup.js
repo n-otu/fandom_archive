@@ -1,5 +1,6 @@
 export default {
     name: "popup",
+    emits: ['close'],
     template: `
       <teleport to="body">
         <div class="modal-backdrop" @click.self="$emit('close')">
