@@ -300,6 +300,14 @@ h1 {
 
 
   /* channels */
+  .top-bar-icon {
+  width: 3rem;
+  height: 3rem;
+  object-fit: cover;
+  border-radius: 1rem;
+  margin-right: 1rem;
+}
+
 
   .channel-card {
     list-style: none;
@@ -703,3 +711,99 @@ h1 {
       transform: translateY(0);
     }
   }
+
+  /* formatting for mobile (smaller) screens */
+
+@media (max-width: 600px) {
+
+
+  nav {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .profile-tab-button {
+    top: 0.5rem;
+    right: 0.5rem;
+  }
+
+  
+  #app {
+    padding: 1rem 0.5rem;
+  }
+
+  .channel-layout {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .channel-sidebar {
+    max-width: 100%;
+    border-right: none;
+    border-bottom: 1px solid #ccc;
+  }
+
+  .channel-sidebar.hidden {
+    display: none;
+  }
+
+  .channel-main {
+    padding: 1rem 0.5rem;
+  }
+
+
+
+  .forum-thread,
+  .post,
+  .forum-card,
+  .profile-container {
+    margin: 1rem 0.5rem;
+    padding: 1rem;
+  }
+
+  .post-header .avatar,
+  .avatar-small {
+    width: 32px;
+    height: 32px;
+  }
+
+
+  .forum-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .forum-header-icon {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 0.5rem;
+  }
+
+
+
+  .channel-icon {
+    width: 3rem;
+    height: 3rem;
+  }
+
+  .top-bar-icon {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .top-bar-name {
+    font-size: 0.9rem;
+  }
+
+  .top-bar-topic {
+    font-size: 0.8rem;
+  }
+
+
+  .forum-compose-form button,
+  .edit-profile-form button,
+  .channel-main input[type="submit"] {
+    font-size: 0.9rem;
+    padding: 0.4rem 1rem;
+  }
+}

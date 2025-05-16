@@ -638,6 +638,10 @@
                       >
                         <template v-if="metaObjects.length">
                           <template v-if="(meta = metaObjects.find(m => m.value.object.channel === channelId))">
+
+
+
+
                             <template v-if="meta.value.object.icon">
                               <graffiti-get
                                 :url="meta.value.object.icon"
@@ -654,6 +658,7 @@
                                 </graffiti-object-to-file>
                               </graffiti-get>
                             </template>
+
                             <template v-else>
                               <img
                                 src="media/blank-profile-picture.webp"
@@ -663,12 +668,18 @@
                               />
                             </template>
 
+
+
+
                             <div class="channel-info">
                               <h3>{{ meta.value.object.name }}</h3>
                               <p>{{ meta.value.object.topic }}</p>
                             </div>
                           </template>
                         </template>
+
+
+
                         <template v-else>
                           <div class="channel-info">
                             <h3>Unnamed</h3>
@@ -714,19 +725,49 @@
                         }
                       }"
                     >
-                      <template v-if="(meta = metaObjects.find(m => m.value.object.channel === selectedChannel))">
-                        <div class="top-bar-meta">
-                          <img
-                            :src="meta.value.object.icon || 'media/blank-profile-picture.webp'"
-                            alt="Channel icon"
-                            class="top-bar-icon"
-                          />
-                          <div class="top-bar-text">
-                            <div class="top-bar-name">{{ meta.value.object.name }}</div>
-                            <div class="top-bar-topic">#{{ meta.value.object.topic || 'No topic' }}</div>
-                          </div>
-                        </div>
+                  <template v-if="(meta = metaObjects.find(m => m.value.object.channel === selectedChannel))">
+                    <div class="top-bar-meta">
+                      <template v-if="meta.value.object.icon">
+                        <graffiti-get
+                          :url="meta.value.object.icon"
+                          :schema="graffitiFileSchema"
+                          v-slot="{ object }"
+                        >
+                          <graffiti-object-to-file :object="object" v-slot="{ fileDataUrl }">
+                            <img
+                              v-if="fileDataUrl"
+                              :src="fileDataUrl"
+                              alt="Channel icon"
+                              class="top-bar-icon"
+                            />
+                            <img
+                              v-else
+                              src="media/blank-profile-picture.webp"
+                              alt="Default channel icon"
+                              class="top-bar-icon"
+                            />
+                          </graffiti-object-to-file>
+                        </graffiti-get>
                       </template>
+
+
+                      <template v-else>
+                        <img
+                          src="media/blank-profile-picture.webp"
+                          alt="Default channel icon"
+                          class="top-bar-icon"
+                        />
+                      </template>
+
+
+                      <div class="top-bar-text">
+                        <div class="top-bar-name">{{ meta.value.object.name }}</div>
+                        <div class="top-bar-topic">#{{ meta.value.object.topic || 'No topic' }}</div>
+                      </div>
+                    </div>
+                  </template>
+                  
+
                     </graffiti-discover>
 
                     <button @click="showSidebar = !showSidebar" class="sidebar-toggle">
