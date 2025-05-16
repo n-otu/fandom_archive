@@ -11,6 +11,7 @@ import LikeButton from './LikeButton.js';
 const app = createApp({
   data() {
     return {
+      viewedProfileActor: null,
       welcomeMessage: '',
       showWelcome: false,
       selectedForum: null,
@@ -72,6 +73,36 @@ const app = createApp({
 
 
   methods: {
+    
+    async loadProfile(actor) {
+      const res = await this.$graffiti.discover({
+        channels: [actor],
+        schema: {
+          properties: {
+            value: {
+              required: ['describes'],
+              properties: {
+                describes: { type: 'string' },
+                icon: { type: 'string' },
+                name: { type: 'string' },
+                pronouns: { type: 'string' },
+                bio: { type: 'string' },
+                published: { type: 'number' }
+              }
+            }
+          }
+        }
+      });
+
+      const latest = res.sort((a, b) => (b.value.published || 0) - (a.value.published || 0))[0]?.value;
+      this.latestProfile = latest || null;
+    }
+,
+    viewUserProfile(actor) {
+      this.viewingProfileOf = actor;
+      this.currentTab = 'profile';
+  },
+
 
     getPrivateChannelName(channelId) {
       const meta = this.privateChannelMetaObjects?.find(
@@ -366,7 +397,7 @@ const app = createApp({
         await this.$graffiti.put({
             value: {
             activity: "Add",
-            object: this.newMemberId,
+            object: `https://id.inrupt.com/${this.newMemberId}`,
             target: this.selectedChannel,
             },
             channels: ['channel-invites', this.selectedChannel],
@@ -399,7 +430,7 @@ const app = createApp({
         // send a join message
         this.$graffiti.put({
           value: {
-            content: `${this.$graffitiSession?.value?.actor} joined the chat.`,
+            content: `${this.getShortUsername(this.$graffitiSession?.value?.actor)} joined the chat.`,
             published: Date.now(),
             system: true
           },
@@ -484,7 +515,7 @@ const app = createApp({
           }, session);
 
         // invite another user if specified
-        if (this.invitedUserId && this.invitedUserId !== session.actor) {
+        if (this.invitedUserId && `https://id.inrupt.com/${this.invitedUserId}` !== session.actor) {
           await this.$graffiti.put({
             value: {
               activity: "Add",
@@ -617,9 +648,16 @@ const app = createApp({
       });
     },
 
+    // ex, get the nonyo from https://id.inrupt.com/nonyo
+    getShortUsername(fullId) {
+      if (!fullId) return '';
+      return fullId.split('/').pop();
+    }
+
   },
 
   mounted: async function () {
+
 
     const urlParams = new URLSearchParams(window.location.search);
     const channelFromUrl = urlParams.get('channel');
@@ -640,9 +678,11 @@ const app = createApp({
 
     // watch for login changes and load data
     this.$watch(
+
       () => this.$graffitiSession?.value?.actor,
       async (actor) => {
         if (!actor) return;
+        this.viewingProfileOf = actor;
 
         try {
           // load accepted invites

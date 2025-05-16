@@ -63,7 +63,7 @@
                 v-slot="{ object }"
               >
                 <graffiti-object-to-file :object="object" v-slot="{ fileDataUrl }">
-                  <button @click="currentTab = 'profile'" class="profile-tab-button" aria-label="Profile">
+                  <button @click="viewingProfileOf = $graffitiSession.value.actor; currentTab = 'profile'" class="profile-tab-button" aria-label="Profile">
                     <img :src="fileDataUrl" style="width: 5rem; height: 5rem; border-radius: 50%" />
                   </button>
                 </graffiti-object-to-file>
@@ -83,12 +83,12 @@
       <button v-if="!$graffitiSession?.value" @click="$graffiti.login()" id="login">Log In</button>
       <button v-if="$graffitiSession?.value" @click="$graffiti.logout($graffitiSession.value)" id="logout">Log Out</button>
 
-      <section v-if="currentTab === 'profile' && $graffitiSession?.value">
+      <section v-if="currentTab === 'profile' && viewingProfileOf">
         <h2>Profile</h2>
 
         <graffiti-discover
           v-slot="{ objects }"
-          :channels="($graffitiSession?.value?.actor ? [$graffitiSession.value.actor] : [])"
+          :channels="[viewingProfileOf]"
           :schema="{
             properties: {
               value: {
@@ -134,7 +134,7 @@
                 </div>
 
                 <div class="profile-info">
-                  <p><strong>Username:</strong> {{ $graffitiSession.value.actor }}</p>
+                  <p><strong>Username:</strong> {{ getShortUsername($graffitiSession.value.actor) }}</p>
                   <p><strong>Display Name:</strong> {{ latestProfile.name || '(none)' }}</p>
                   <p><strong>Pronouns:</strong> {{ latestProfile.pronouns || '(none)' }}</p>
                   <p><strong>Bio:</strong> {{ latestProfile.bio || '(none)' }}</p>
@@ -147,18 +147,20 @@
             <p>No profile found yet. Fill out the form below to create one.</p>
           </template>
 
-          <button @click="showProfileForm = !showProfileForm">
-            {{ showProfileForm ? 'Done' : 'Edit Profile' }}
-          </button>
-
+           <!-- Only allow editing if it's your own profile -->
+          <template v-if="viewingProfileOf === $graffitiSession?.value?.actor">
+            <button @click="showProfileForm = !showProfileForm">
+              {{ showProfileForm ? 'Done' : 'Edit Profile' }}
+            </button>
           <form v-if="showProfileForm" @submit.prevent="submitProfile" class="edit-profile-form">
-            <input v-model="profileName" placeholder="Display Name" />
-            <input v-model="profilePronouns" placeholder="Pronouns" />
-            <textarea v-model="profileBio" placeholder="Short bio"></textarea>
-            <input type="file" @change="upload_file" />
-            <button type="submit">Save Profile</button>
-          </form>
-        </graffiti-discover>
+              <input v-model="profileName" placeholder="Display Name" />
+              <input v-model="profilePronouns" placeholder="Pronouns" />
+              <textarea v-model="profileBio" placeholder="Short bio"></textarea>
+              <input type="file" @change="upload_file" />
+              <button type="submit">Save Profile</button>
+            </form>
+            </template>
+          </graffiti-discover>
       </section>
 
 
@@ -476,7 +478,46 @@
                   >
                     <div v-for="msg in messages.sort((a, b) => a.value.published - b.value.published)" :key="msg.url" class="forum-post">
                       <div class="post-header">
-                        <strong class="post-author">{{ msg.actor }}</strong>
+                        <div class="message-header">
+                          <!-- show profile icon beside username -->
+                          <graffiti-discover
+                            v-slot="{ objects: userProfiles }"
+                            :channels="[msg.actor]"
+                            :schema="{
+                              properties: {
+                                value: {
+                                  required: ['describes'],
+                                  properties: {
+                                    describes: { type: 'string' },
+                                    icon: { type: 'string' },
+                                    published: { type: 'number' }
+                                  }
+                                }
+                              }
+                            }"
+                          >
+                            <graffiti-get
+                              v-if="userProfiles.length && userProfiles[0].value.icon"
+                              :url="userProfiles.sort((a, b) => (b.value.published || 0) - (a.value.published || 0))[0].value.icon"
+                              :schema="graffitiFileSchema"
+                              v-slot="{ object }"
+                            >
+                              <graffiti-object-to-file :object="object" v-slot="{ fileDataUrl }">
+                                <img :src="fileDataUrl" class="avatar-small" />
+                              </graffiti-object-to-file>
+                            </graffiti-get>
+
+                            <img v-else src="media/blank-profile-picture.webp" class="avatar-small" />
+
+                            <strong
+                              @click="viewUserProfile(msg.actor)"
+                              class="clickable-username"
+                            >
+                              {{ getShortUsername(msg.actor) }}
+                            </strong>
+                          </graffiti-discover>
+                        </div>
+
                         <span class="post-date">{{ new Date(msg.value.published).toLocaleString() }}</span>
                       </div>
                       <div class="post-body">
@@ -578,7 +619,7 @@
                         <ul>
                             <li v-for="invite in inviteObjects.filter(i => i.value.object === $graffitiSession.value.actor && !joinedChannels.includes(i.value.target))">
                                 <span>
-                                    Invitation from <strong>{{ invite.actor }}</strong> to join:
+                                    Invitation from <strong>{{ getShortUsername(invite.actor) }}</strong> to join:
                                     {{
                                       createObjects.find(o => o.value.object.channel === invite.value.target)?.value.object.name || 'Unnamed'
                                     }}
@@ -778,7 +819,7 @@
                             <h4>Members in this chat:</h4>
                             <ul>
                                 <li v-for="invite in inviteObjects.filter(i => i.value.target === selectedChannel)">
-                                    {{ invite.value.object }}
+                                    {{ getShortUsername(invite.value.object) }}
                                     <span v-if="invite.value.object === $graffitiSession.value.actor"> (you)</span>
                                 </li>
                             </ul>
@@ -786,7 +827,7 @@
 
                         <h4>Add Member</h4>
                             <form @submit.prevent="add_person_to_channel($graffitiSession.value)">
-                            <input v-model="newMemberId" placeholder="User ID" />
+                            <input v-model="newMemberId" placeholder="Username (e.g. nonyo)" />
                             <button type="submit">Add</button>
                             </form>
 
@@ -812,7 +853,7 @@
                             }
                         }"
                     >
-                        <!-- <h4>Messages</h4> -->
+
                         <ul>
                             <li v-if="isInitialPolling">Loading...</li>
                             <li
@@ -821,27 +862,35 @@
                                 :ref="index === messageObjects.length - 1 ? 'newMessage' : null"
                                 :class="{ 'message-slide-in': index === messageObjects.length - 1 }"
                               >
-                                <strong>
-                                    {{ object.actor }}
-                                    <span v-if="object.actor === $graffitiSession.value.actor">(you)</span>
-                                </strong>:
+                                <strong @click="viewUserProfile(object.actor)" class="clickable-username">
+                                  {{ getShortUsername(object.actor) }}
+                                  <span v-if="object.actor === $graffitiSession.value.actor">(you)</span>
+                                </strong>
+                                :
                                 <em style="font-size: 0.8em; color: gray; margin-left: 6px;">
                                     {{ new Date(object.value.published).toLocaleString() }}
                                 </em><br />
-                                <span v-if="editing !== object.url">{{ object.value.content }}</span>
+                                <span
+                                  v-if="editing !== object.url"
+                                  :class="{ 'system-message': object.value.system }"
+                                >
+                                  {{ object.value.content }}
+                                </span>
+
                                 <input v-else v-model="editBuffer" @keyup.enter="submitEdit(object)" />
 
-                                <template v-if="object.actor === $graffitiSession.value.actor">
-                                    <button v-if="editing !== object.url" @click="startEditing(object)">Edit</button>
-                                    <button v-if="editing === object.url" @click="cancelEdit">Cancel</button>
-                                    <!-- <button @click="deleteMessage(object)">Delete</button> -->
-                                </template>
+                               <div
+                                  class="message-actions"
+                                  v-if="object.actor === $graffitiSession.value.actor"
+                                >
+                                    <button v-if="editing !== object.url" @click="startEditing(object)">✏️</button>
+                                    <button @click="deleteMessage(object)">🗑️</button>
+                              </div>
                             </li>
                         </ul>
                     </graffiti-discover>
 
                     <!-- send a message -->
-                    <!-- <h4>Send a Message</h4> -->
                     <form @submit.prevent="sendMessage($graffitiSession.value)">
                         <fieldset :disabled="sending">
                             <input

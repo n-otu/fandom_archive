@@ -7,6 +7,7 @@
 
 }
 
+
 body {
   background-color: #E3EDFF;
 }
@@ -89,6 +90,15 @@ h1 {
     margin: 0 auto;
     padding: 2rem 1rem;
   }
+
+  .clickable-username {
+    cursor: pointer;
+    color: #0066cc;
+    text-decoration: underline;
+}
+  .clickable-username:hover {
+    color: #004080;
+}
 
 
 
@@ -493,6 +503,39 @@ h1 {
     transform: translateY(-10px);
   }
 
+  .system-message {
+  font-style: italic;
+  color: gray;
+}
+
+.channel-main ul li {
+  position: relative;
+}
+
+.message-actions {
+  display: none;
+  position: absolute;
+  top: 0.2rem;
+  right: 0.5rem;
+  gap: 0.3rem;
+}
+
+.channel-main ul li:hover .message-actions {
+  display: flex;
+}
+
+.message-actions button {
+  background: #eee;
+  border: none;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.message-actions button:hover {
+  background: #ccc;
+}
 
 
 
@@ -500,6 +543,20 @@ h1 {
 
 
   /* profile */
+  .message-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.3rem;
+}
+
+.avatar-small {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 
   .profile-container {
     display: flex;
