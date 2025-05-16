@@ -8,6 +8,10 @@
 }
 
 
+button:hover {
+  color: rgb(28, 137, 156);
+}
+
 body {
   background-color: #E3EDFF;
 }
@@ -35,7 +39,7 @@ fieldset {
     display: flex;
     gap: 1rem;
     padding: 1rem;
-    border-bottom: 1px solid #ddd;
+    /* border-bottom: 1px solid #ddd; */
     position: relative;
     justify-content: center;
   }
@@ -91,13 +95,15 @@ h1 {
     padding: 2rem 1rem;
   }
 
-  .clickable-username {
-    cursor: pointer;
-    color: #0066cc;
-    text-decoration: underline;
+.clickable-username {
+  text-decoration: none;
+  color: inherit;
+  font-weight: bold;
+  cursor: pointer;
 }
+
   .clickable-username:hover {
-    color: #004080;
+    color: #1969b8;
 }
 
 
@@ -290,16 +296,6 @@ h1 {
     color: #555;
   }
 
-  /* .like-button:active {
-    animation: pop 150ms ease;
-  }
-
-  @keyframes pop {
-    0%   { transform: scale(1); }
-    50%  { transform: scale(1.3); }
-    100% { transform: scale(1); }
-  } */
-
 
 
 
@@ -387,7 +383,12 @@ h1 {
     flex: 1;
     overflow-y: auto;
     margin-bottom: 1rem;
+    list-style: none;
+    padding-left: 0;
+    margin-left: 0;
   }
+
+
 
   .channel-main ul li {
     word-wrap: break-word;
@@ -657,11 +658,6 @@ h1 {
     animation: fadeIn 300ms ease-out;
   }
 
-  /* add in styling for button later */
-  /* .modal-button:hover {
-    background-color: black;
-    color: white;
-  } */
 
   @keyframes fadeIn {
     from { opacity: 0; transform: scale(0.95); }

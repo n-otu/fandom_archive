@@ -73,7 +73,7 @@ const app = createApp({
 
 
   methods: {
-    
+
     async loadProfile(actor) {
       const res = await this.$graffiti.discover({
         channels: [actor],
@@ -229,6 +229,8 @@ const app = createApp({
       console.log("Likes loaded after like:", updatedLikes);
 
       this.starredChannels = Array.isArray(updatedLikes) ? updatedLikes : [];
+
+
     }
 ,
 
@@ -867,7 +869,8 @@ const app = createApp({
     },
     starredChannelIds() {
       return this.starredChannels.map(obj => obj.value.object);
-    }
+    },
+    
   },
 });
 

@@ -220,106 +220,43 @@
                     <input v-model="newForumName" placeholder="Forum Name" />
                     <input v-model="newForumTopic" placeholder="Topic (e.g. books, shows)" />
                     <textarea v-model="newForumDescription" placeholder="Forum Description (optional)"></textarea>
-                    <input type="file" @change="upload_forum_icon" />
                     <button type="submit">Create</button>
                   </form>
                 </Popup>
 
 
-                </graffiti-discover>
 
 
                 <graffiti-discover
                   v-slot="{ objects }"
                   :channels="['global-forums']"
                   :schema="{
-                    properties: {
-                      value: {
-                        required: ['activity', 'object'],
-                        properties: {
-                          activity: { const: 'Create' },
-                          object: {
-                            required: ['type', 'name', 'topic', 'channel'],
-                            properties: {
-                              type: { const: 'Forum' },
-                              name: { type: 'string' },
-                              topic: { type: 'string' },
-                              channel: { type: 'string' }
-                            }
+                  properties: {
+                    value: {
+                      type: 'object',
+                      required: ['activity', 'object'],
+                      properties: {
+                        activity: { const: 'Create' },
+                        object: {
+                          type: 'object',
+                          required: ['type', 'name', 'topic', 'channel'],
+                          properties: {
+                            type: { const: 'Forum' },
+                            name: { type: 'string' },
+                            topic: { type: 'string' },
+                            channel: { type: 'string' },
+                            icon: { type: 'string' },
+                            description: { type: 'string' }
                           }
                         }
                       }
                     }
-                  }"
-                >
-                  <template v-if="(forumObjects = objects)">
+                  }
+                }"
 
-                <h2>Favorite Forums 𐙚 ‧₊˚ ⋅</h2>
-
-
-                <ul>
-                  <li
-                      v-for="forum in starredChannels
-                        .map(s => forumObjects.find(f => f.value.object.channel === s.value.object))
-                        .filter(f => f)"
-                      :key="forum.url"
-                    >
-                    <div class="forum-card" @click="join_forum(forum.value.object.channel)">
-                      <div class="forum-meta">
-                        <template v-if="forum.value.object.icon">
-                          <graffiti-get
-                            :url="forum.value.object.icon"
-                            :schema="graffitiFileSchema"
-                            v-slot="{ object }"
-                          >
-                            <graffiti-object-to-file :object="object" v-slot="{ fileDataUrl }">
-                              <img :src="fileDataUrl" class="forum-icon" alt="Forum icon" />
-                            </graffiti-object-to-file>
-                          </graffiti-get>
-                        </template>
-
-                        <div>
-                          <strong>{{ forum.value.object.name }}</strong><br />
-                          <small>#{{ forum.value.object.topic }}</small><br />
-                          <p v-if="forum.value.object.description" class="forum-description">
-                            {{ forum.value.object.description }}
-                          </p>
-                        </div>
-                      </div>
-
-                      <graffiti-discover
-                        :channels="[forum.value.object.channel]"
-                        :schema="{
-                          properties: {
-                            value: {
-                              required: ['content', 'published'],
-                              properties: {
-                                content: { type: 'string' },
-                                published: { type: 'number' }
-                              }
-                            }
-                          }
-                        }"
-                        v-slot="{ objects: messages }"
-                      >
-                      <div class="forum-interactions">
-                        <like-button
-                          :initial-likes="forum_like_count(forum.value.object.channel)"
-                          @liked="() => like_forum(forum.value.object.channel)"
-                        />
-                        <p class="forum-stats">{{ forum_like_count(forum.value.object.channel) }} liked this forum</p>
-                        <p class="forum-stats">{{ messages.length }} messages</p>
-                      </div>
-
-                      </graffiti-discover>
-
-
-
-                    </div>
-                  </li>
-                </ul>
-
-                  <hr />
+               >
+                <template v-if="objects.length">
+                <span style="display: none">{{ forumObjects = objects }}</span>
 
 
 
@@ -347,24 +284,17 @@
                       )"
                       :key="forum.url"
                     >
-                    <div class="forum-card" @click="join_forum(forum.value.object.channel)">
-                      <div class="forum-meta">
-                        <template v-if="forum.value.object.icon">
-                          <graffiti-get
-                            :url="forum.value.object.icon"
-                            :schema="graffitiFileSchema"
-                            v-slot="{ object }"
-                          >
-                            <graffiti-object-to-file :object="object" v-slot="{ fileDataUrl }">
-                              <img :src="fileDataUrl" class="forum-icon" alt="Forum icon" />
-                            </graffiti-object-to-file>
-                          </graffiti-get>
-                        </template>
 
+                    <div class="forum-card" @click="join_forum(forum.value.object.channel)">
+                      <div class="forum-meta" style="display: flex; align-items: center; gap: 1rem;">
+
+                        <!-- Forum Metadata -->
                         <div>
                           <strong>{{ forum.value.object.name }}</strong><br />
                           <small>#{{ forum.value.object.topic }}</small><br />
-                          <p v-if="forum.value.object.description" class="forum-description">{{ forum.value.object.description }}</p>
+                          <p v-if="forum.value.object.description" class="forum-description">
+                            {{ forum.value.object.description }}
+                          </p>
                         </div>
                       </div>
 
@@ -386,10 +316,13 @@
                         <p class="forum-stats">{{ messages.length }} messages</p>
                       </graffiti-discover>
 
-                      <like-button
-                      :initial-likes="forum_like_count(forum.value.object.channel)"
-                      @liked="() => like_forum(forum.value.object.channel)"
-                    />
+                      <div @click.stop>
+                        <like-button
+                          :initial-likes="forum_like_count(forum.value.object.channel)"
+                          @liked="() => like_forum(forum.value.object.channel)"
+                        />
+                      </div>
+
 
                       <p class="forum-stats">
                         {{ forum_like_count(forum.value.object.channel) }} liked this forum
@@ -414,28 +347,30 @@
                 <!-- Forum metadata header -->
                 <graffiti-discover
                   v-slot="{ objects: forumMeta }"
-                  :channels="['global-forums']"
                   :schema="{
-                    properties: {
-                      value: {
-                        required: ['activity', 'object'],
-                        properties: {
-                          activity: { const: 'Create' },
-                          object: {
-                            required: ['type', 'name', 'topic', 'channel'],
-                            properties: {
-                              type: { const: 'Forum' },
-                              name: { type: 'string' },
-                              topic: { type: 'string' },
-                              channel: { type: 'string' },
-                              description: { type: 'string' },
-                              icon: { type: 'string' }
-                            }
+                  properties: {
+                    value: {
+                      type: 'object',
+                      required: ['activity', 'object'],
+                      properties: {
+                        activity: { const: 'Create' },
+                        object: {
+                          type: 'object',
+                          required: ['type', 'name', 'topic', 'channel'],
+                          properties: {
+                            type: { const: 'Forum' },
+                            name: { type: 'string' },
+                            topic: { type: 'string' },
+                            channel: { type: 'string' },
+                            icon: { type: 'string' },
+                            description: { type: 'string' }
                           }
                         }
                       }
                     }
-                  }"
+                  }
+                }"
+
                 >
                   <template v-if="(meta = forumMeta.find(f => f.value.object.channel === selectedChannel))">
                     <div class="forum-header">
@@ -481,41 +416,73 @@
                         <div class="message-header">
                           <!-- show profile icon beside username -->
                           <graffiti-discover
-                            v-slot="{ objects: userProfiles }"
-                            :channels="[msg.actor]"
-                            :schema="{
-                              properties: {
-                                value: {
-                                  required: ['describes'],
-                                  properties: {
-                                    describes: { type: 'string' },
-                                    icon: { type: 'string' },
-                                    published: { type: 'number' }
-                                  }
-                                }
-                              }
-                            }"
-                          >
-                            <graffiti-get
-                              v-if="userProfiles.length && userProfiles[0].value.icon"
-                              :url="userProfiles.sort((a, b) => (b.value.published || 0) - (a.value.published || 0))[0].value.icon"
-                              :schema="graffitiFileSchema"
-                              v-slot="{ object }"
-                            >
-                              <graffiti-object-to-file :object="object" v-slot="{ fileDataUrl }">
-                                <img :src="fileDataUrl" class="avatar-small" />
-                              </graffiti-object-to-file>
-                            </graffiti-get>
+  v-slot="{ objects: userProfiles }"
+  :channels="[msg.actor]"
+  :schema="{
+    properties: {
+      value: {
+        required: ['describes'],
+        properties: {
+          describes: { type: 'string' },
+          icon: { type: 'string' },
+          published: { type: 'number' }
+        }
+      }
+    }
+  }"
+>
+  <graffiti-get
+    v-if="userProfiles.length && userProfiles[0].value.icon"
+    :url="userProfiles.sort((a, b) => (b.value.published || 0) - (a.value.published || 0))[0].value.icon"
+    :schema="graffitiFileSchema"
+    v-slot="{ object }"
+  >
+    <graffiti-object-to-file :object="object" v-slot="{ fileDataUrl }">
+      <img :src="fileDataUrl" class="avatar-small" />
+    </graffiti-object-to-file>
+  </graffiti-get>
 
-                            <img v-else src="media/blank-profile-picture.webp" class="avatar-small" />
+  <img v-else src="media/blank-profile-picture.webp" class="avatar-small" />
 
-                            <strong
-                              @click="viewUserProfile(msg.actor)"
-                              class="clickable-username"
-                            >
-                              {{ getShortUsername(msg.actor) }}
-                            </strong>
-                          </graffiti-discover>
+<div class="message-header">
+  <graffiti-discover
+    v-slot="{ objects: userProfiles }"
+    :channels="[object.actor]"
+    :schema="{
+      properties: {
+        value: {
+          required: ['describes'],
+          properties: {
+            describes: { type: 'string' },
+            icon: { type: 'string' },
+            published: { type: 'number' }
+          }
+        }
+      }
+    }"
+  >
+    <graffiti-get
+      v-if="userProfiles.length && userProfiles[0].value.icon"
+      :url="userProfiles.sort((a, b) => (b.value.published || 0) - (a.value.published || 0))[0].value.icon"
+      :schema="graffitiFileSchema"
+      v-slot="{ object }"
+    >
+      <graffiti-object-to-file :object="object" v-slot="{ fileDataUrl }">
+        <img :src="fileDataUrl" class="avatar-small" />
+      </graffiti-object-to-file>
+    </graffiti-get>
+
+    <img v-else src="media/blank-profile-picture.webp" class="avatar-small" />
+
+    <strong @click="viewUserProfile(object.actor)" class="clickable-username">
+      {{ getShortUsername(object.actor) }}
+      <span v-if="object.actor === $graffitiSession.value.actor">(you)</span>
+    </strong>
+  </graffiti-discover>
+</div>
+
+</graffiti-discover>
+
                         </div>
 
                         <span class="post-date">{{ new Date(msg.value.published).toLocaleString() }}</span>
@@ -529,8 +496,8 @@
 
                 <!-- Message composer -->
                 <form @submit.prevent="sendMessage($graffitiSession.value)" class="forum-compose-form">
-                  <textarea v-model="myMessage" placeholder="Write a reply..." rows="3"></textarea>
-                  <button type="submit">Post Reply</button>
+                  <textarea v-model="myMessage" placeholder="Write a comment..." rows="3"></textarea>
+                  <button type="submit">Post Comment</button>
                 </form>
               </div>
             </template>
@@ -854,40 +821,69 @@
                         }"
                     >
 
-                        <ul>
-                            <li v-if="isInitialPolling">Loading...</li>
-                            <li
-                                v-for="(object, index) in messageObjects.sort((a, b) => a.value.published - b.value.published)"
-                                :key="object.url"
-                                :ref="index === messageObjects.length - 1 ? 'newMessage' : null"
-                                :class="{ 'message-slide-in': index === messageObjects.length - 1 }"
+                       <ul>
+                        <li v-if="isInitialPolling">Loading...</li>
+                        <li
+                          v-for="(object, index) in messageObjects.sort((a, b) => a.value.published - b.value.published)"
+                          :key="object.url"
+                          :ref="index === messageObjects.length - 1 ? 'newMessage' : null"
+                          :class="{ 'message-slide-in': index === messageObjects.length - 1 }"
+                        >
+                          <div class="message-header" style="display: flex; align-items: center; gap: 0.5rem;">
+                            <graffiti-discover
+                              v-slot="{ objects: userProfiles }"
+                              :channels="[object.actor]"
+                              :schema="{
+                                properties: {
+                                  value: {
+                                    required: ['describes'],
+                                    properties: {
+                                      describes: { type: 'string' },
+                                      icon: { type: 'string' },
+                                      published: { type: 'number' }
+                                    }
+                                  }
+                                }
+                              }"
+                            >
+                              <graffiti-get
+                                v-if="userProfiles.length && userProfiles[0].value.icon"
+                                :url="userProfiles.sort((a, b) => (b.value.published || 0) - (a.value.published || 0))[0].value.icon"
+                                :schema="graffitiFileSchema"
+                                v-slot="{ object: iconObj }"
                               >
-                                <strong @click="viewUserProfile(object.actor)" class="clickable-username">
-                                  {{ getShortUsername(object.actor) }}
-                                  <span v-if="object.actor === $graffitiSession.value.actor">(you)</span>
-                                </strong>
-                                :
-                                <em style="font-size: 0.8em; color: gray; margin-left: 6px;">
-                                    {{ new Date(object.value.published).toLocaleString() }}
-                                </em><br />
-                                <span
-                                  v-if="editing !== object.url"
-                                  :class="{ 'system-message': object.value.system }"
-                                >
-                                  {{ object.value.content }}
-                                </span>
+                                <graffiti-object-to-file :object="iconObj" v-slot="{ fileDataUrl }">
+                                  <img :src="fileDataUrl" class="avatar-small" />
+                                </graffiti-object-to-file>
+                              </graffiti-get>
+                              <img v-else src="media/blank-profile-picture.webp" class="avatar-small" />
 
-                                <input v-else v-model="editBuffer" @keyup.enter="submitEdit(object)" />
+                              <strong @click="viewUserProfile(object.actor)" class="clickable-username">
+                                {{ getShortUsername(object.actor) }}
+                                <span v-if="object.actor === $graffitiSession.value.actor">(you)</span>
+                              </strong>
+                            </graffiti-discover>
 
-                               <div
-                                  class="message-actions"
-                                  v-if="object.actor === $graffitiSession.value.actor"
-                                >
-                                    <button v-if="editing !== object.url" @click="startEditing(object)">✏️</button>
-                                    <button @click="deleteMessage(object)">🗑️</button>
-                              </div>
-                            </li>
-                        </ul>
+                            <span class="post-date" style="margin-left: auto;">{{ new Date(object.value.published).toLocaleString() }}</span>
+                          </div>
+
+                          <div class="post-body">
+                            <span
+                              v-if="editing !== object.url"
+                              :class="{ 'system-message': object.value.system }"
+                            >
+                              {{ object.value.content }}
+                            </span>
+                            <input v-else v-model="editBuffer" @keyup.enter="submitEdit(object)" />
+
+                            <div class="message-actions" v-if="object.actor === $graffitiSession.value.actor">
+                              <button v-if="editing !== object.url" @click="startEditing(object)">✏️</button>
+                              <button @click="deleteMessage(object)">🗑️</button>
+                            </div>
+                          </div>
+                        </li>
+                      </ul>
+
                     </graffiti-discover>
 
                     <!-- send a message -->
